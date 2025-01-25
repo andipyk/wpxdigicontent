@@ -6,11 +6,11 @@
 
 ## Description
 
-DigiContent is a powerful WordPress plugin that leverages the capabilities of Anthropic's Claude 3.5 Sonnet and OpenAI's GPT-4 Turbo to generate high-quality, AI-powered content for your WordPress website. Developed by [Andi Syafrianda](https://digikuy.com), this plugin seamlessly integrates advanced AI technology into your content creation workflow.
+DigiContent is a powerful WordPress plugin that leverages the capabilities of Anthropic's Claude 3.5 Sonnet and OpenAI's GPT-4  to generate high-quality, AI-powered content for your WordPress website. Developed by [Andi Syafrianda](https://digikuy.com), this plugin seamlessly integrates advanced AI technology into your content creation workflow.
 
 ## Features
 
-- 🤖 Dual AI Integration: Support for both Claude 3.5 Sonnet (Anthropic) and GPT-4 Turbo (OpenAI)
+- 🤖 Dual AI Integration: Support for both Claude 3.5 Sonnet (Anthropic) and GPT-4  (OpenAI)
 - 🔒 Secure API Key Management: Encrypted storage of API keys
 - ⚙️ Customizable Settings: Adjust max tokens and temperature for AI responses
 - 📝 Post Editor Integration: Generate content directly within the WordPress editor
@@ -58,9 +58,7 @@ DigiContent is a powerful WordPress plugin that leverages the capabilities of An
 
 ### Advanced Settings
 4. Configure your preferred settings:
-   - Default AI model (Claude 3.5 Sonnet or GPT-4 Turbo)
-   - Maximum tokens (recommended: 2048-4096)
-   - Temperature setting (0.0-1.0, recommended: 0.7)
+   - Default AI model (Claude 3.5 Sonnet or GPT-4)
    - Response format (HTML/Markdown)
 5. Save your changes
 
@@ -121,7 +119,7 @@ Generate SEO-optimized content about [topic] targeting the keyword [keyword].
 
 2. **Which AI model should I choose?**
    - Claude 3.5 Sonnet: Best for creative and nuanced content
-   - GPT-4 Turbo: Excellent for technical and structured content
+   - GPT-4: Excellent for technical and structured content
 
 3. **Is the generated content unique?**
    - Yes, each generation produces unique content based on your prompt
@@ -168,7 +166,7 @@ This plugin is licensed under the GPL v2 or later.
 
 ### 1.1.0 (2024-03-15)
 - Added support for Claude 3.5 Sonnet
-- Upgraded to GPT-4 Turbo
+- Upgraded to GPT-4
 - Enhanced encryption for API keys
 - Improved error handling and logging
 - Added custom prompt templates
