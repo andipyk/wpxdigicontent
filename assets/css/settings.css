@@ -1,25 +1,14 @@
 .digicontent-settings-wrap {
-    max-width: 1200px;
-    margin: 20px 0;
+    margin: 20px;
 }
 
-.digicontent-section {
+/* Template Section */
+.digicontent-templates-wrap {
     background: #fff;
-    border: 1px solid #ccd0d4;
-    border-radius: 4px;
     padding: 20px;
     margin-bottom: 20px;
-    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
-}
-
-.digicontent-section h2 {
-    margin-top: 0;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #eee;
-}
-
-.digicontent-templates-wrapper {
-    margin-bottom: 30px;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
 }
 
 .digicontent-templates-list {
@@ -29,224 +18,114 @@
 .digicontent-template-form {
     background: #f9f9f9;
     padding: 20px;
-    border-radius: 4px;
-}
-
-.digicontent-template-form h3 {
-    margin-top: 0;
-}
-
-.prompt-template-wrapper {
-    margin: 20px 0;
-}
-
-.prompt-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.prompt-header label {
-    font-weight: 600;
-    margin-right: 8px;
-}
-
-.prompt-header .tooltip {
-    position: relative;
-    display: inline-block;
-    color: #666;
-    cursor: help;
-}
-
-.prompt-header .tooltip-content {
-    display: none;
-    position: absolute;
-    left: 25px;
-    top: -5px;
-    background: #fff;
-    padding: 10px;
-    border-radius: 4px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    width: 300px;
-    z-index: 100;
-    font-size: 12px;
-    line-height: 1.4;
-    font-weight: normal;
-}
-
-.prompt-header .tooltip:hover .tooltip-content {
-    display: block;
-}
-
-.prompt-editor {
-    position: relative;
-    margin-bottom: 15px;
-}
-
-.prompt-editor textarea {
-    width: 100%;
-    margin-bottom: 10px;
-}
-
-.insert-variable-button {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.common-variables {
-    background: #fff;
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    margin-top: 15px;
-}
-
-.common-variables h4 {
-    margin: 0 0 10px 0;
-    font-size: 14px;
-}
-
-.variable-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.variable-chip {
-    display: inline-block;
-    padding: 4px 8px;
-    background: #f0f0f0;
-    border-radius: 3px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.variable-chip:hover {
-    background: #e0e0e0;
-}
-
-.digicontent-api-field {
-    position: relative;
-    margin-bottom: 15px;
-}
-
-.digicontent-api-field .tooltip {
-    display: inline-block;
-    margin-left: 5px;
-    color: #666;
-    cursor: help;
-}
-
-.digicontent-api-field .tooltip-content {
-    display: none;
-    position: absolute;
-    background: #fff;
-    padding: 10px;
-    border-radius: 4px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    width: 250px;
-    z-index: 100;
-    font-size: 12px;
-    line-height: 1.4;
-    left: 25px;
-    top: -5px;
-}
-
-.digicontent-api-field .tooltip:hover .tooltip-content {
-    display: block;
-}
-
-.prompt-template-wrapper {
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 15px;
-    margin-bottom: 20px;
-}
-
-.prompt-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.prompt-editor {
-    position: relative;
-    margin-bottom: 15px;
-}
-
-.insert-variable-button {
-    position: absolute;
-    right: 10px;
-    bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.insert-variable-button .dashicons {
-    font-size: 16px;
-    width: 16px;
-    height: 16px;
-}
-
-.variable-preview {
-    background: #f0f0f1;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 15px;
-    margin: 15px 0;
-}
-
-.variable-preview h4 {
-    margin: 0 0 10px;
-    color: #1d2327;
-}
-
-.common-variables {
+    border: 1px solid #e5e5e5;
     margin-top: 20px;
 }
 
-.common-variables h4 {
-    margin: 0 0 10px;
-    color: #1d2327;
+.prompt-template-wrapper {
+    margin: 15px 0;
+}
+
+.prompt-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
 }
 
 .variable-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
+    margin-top: 10px;
 }
 
 .variable-chip {
-    display: inline-block;
-    background: #e9f0f5;
-    border: 1px solid #c3c4c7;
-    border-radius: 12px;
-    padding: 4px 12px;
-    font-size: 13px;
-    color: #2271b1;
+    background: #e9ecef;
+    padding: 5px 10px;
+    border-radius: 15px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    font-size: 12px;
+    transition: background-color 0.2s;
 }
 
 .variable-chip:hover {
-    background: #2271b1;
-    border-color: #2271b1;
-    color: #fff;
+    background: #dee2e6;
 }
 
-.digicontent-reset-button {
-    margin-left: 10px;
+.variable-highlight {
+    background: #e9ecef;
+    padding: 2px 5px;
+    border-radius: 3px;
 }
 
-.wp-core-ui .button-reset {
-    color: #a00;
+/* API Settings Section */
+.digicontent-api-settings {
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
 }
 
-.wp-core-ui .button-reset:hover {
-    color: #dc3232;
-    border-color: #dc3232;
+.digicontent-api-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Notifications */
+#template-notice {
+    margin: 15px 0;
+    padding: 10px 15px;
+    border-left-width: 4px;
+}
+
+.notice-success {
+    border-left-color: #46b450;
+}
+
+.notice-error {
+    border-left-color: #dc3232;
+}
+
+/* Tooltips */
+.tooltip {
+    position: relative;
+    cursor: help;
+}
+
+.tooltip-content {
+    display: none;
+    position: absolute;
+    z-index: 1000;
+    background: #fff;
+    padding: 10px;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+    width: 250px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.tooltip:hover .tooltip-content {
+    display: block;
+}
+
+/* Variable Dialog */
+.variable-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.variable-dialog .button {
+    text-align: left;
+    padding: 8px 12px;
+}
+
+/* Loading States */
+.button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
 }

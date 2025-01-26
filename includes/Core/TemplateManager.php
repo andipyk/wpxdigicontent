@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace DigiContent\Core;
 
 class TemplateManager {
-    private const TEMPLATE_OPTION_KEY = 'digicontent_templates';
+    private $template_repository;
     private const CATEGORIES = [
         'blog_post' => 'Blog Post',
         'product_description' => 'Product Description',
@@ -16,7 +16,8 @@ class TemplateManager {
     private const CACHE_EXPIRATION = 3600; // 1 hour in seconds
     private const MAX_VERSIONS = 5;
 
-    public function __construct() {
+    public function __construct($template_repository) {
+        $this->template_repository = $template_repository;
         add_action('init', [$this, 'init']);
     }
 
@@ -101,34 +102,8 @@ class TemplateManager {
     public function get_templates(\WP_REST_Request $request): \WP_REST_Response {
         try {
             $category = $request->get_param('category');
-            $search = $request->get_param('search');
-            
-            $cache_key = 'digicontent_templates_' . md5($category . $search);
-            $cached_templates = get_transient($cache_key);
-
-            if (false !== $cached_templates) {
-                return new \WP_REST_Response($cached_templates);
-            }
-
-            $templates = get_option(self::TEMPLATE_OPTION_KEY, []);
-            
-            // Filter by category if specified
-            if ($category) {
-                $templates = array_filter($templates, fn($t) => $t['category'] === $category);
-            }
-            
-            // Filter by search term if specified
-            if ($search) {
-                $search = strtolower($search);
-                $templates = array_filter($templates, function($t) use ($search) {
-                    return str_contains(strtolower($t['name']), $search) ||
-                           str_contains(strtolower($t['prompt']), $search);
-                });
-            }
-
-            $templates = array_values($templates);
-            set_transient($cache_key, $templates, self::CACHE_EXPIRATION);
-
+            $args = ['category' => $category];
+            $templates = $this->template_repository->get_all($args);
             return new \WP_REST_Response($templates);
         } catch (\Exception $e) {
             return new \WP_REST_Response(
@@ -201,7 +176,6 @@ class TemplateManager {
     public function save_template(\WP_REST_Request $request): \WP_REST_Response {
         try {
             $body = $request->get_json_params();
-            $templates = get_option(self::TEMPLATE_OPTION_KEY, []);
 
             if (!array_key_exists($body['category'], self::CATEGORIES)) {
                 return new \WP_REST_Response(
@@ -210,21 +184,23 @@ class TemplateManager {
                 );
             }
 
-            $template = [
-                'id' => uniqid('template_'),
+            $template_data = [
                 'name' => sanitize_text_field($body['name']),
                 'category' => sanitize_text_field($body['category']),
                 'prompt' => wp_kses_post($body['prompt']),
-                'variables' => array_map('sanitize_text_field', $body['variables'] ?? []),
-                'created_at' => current_time('mysql'),
-                'updated_at' => current_time('mysql'),
-                'version' => 1
+                'variables' => maybe_serialize(array_map('sanitize_text_field', $body['variables'] ?? []))
             ];
 
-            $templates[] = $template;
-            update_option(self::TEMPLATE_OPTION_KEY, $templates);
-            delete_transient('digicontent_templates_cache');
-
+            $template_id = $this->template_repository->create($template_data);
+            
+            if ($template_id === false) {
+                return new \WP_REST_Response(
+                    ['message' => 'Failed to create template'],
+                    500
+                );
+            }
+            
+            $template = $this->template_repository->get($template_id);
             return new \WP_REST_Response($template, 201);
         } catch (\Exception $e) {
             return new \WP_REST_Response(

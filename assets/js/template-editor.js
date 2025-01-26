@@ -12,6 +12,160 @@
             $('.variable-chip').on('click', this.handleVariableChipClick);
             $('#template-prompt').on('input', this.handleTemplateInput);
             $('#digicontent-new-template-form').on('submit', this.handleTemplateSubmit);
+            $('.delete-template').on('click', this.handleTemplateDelete);
+        },
+
+        showNotification: function(message, type = 'success') {
+            const notice = $('#template-notice');
+            notice.removeClass().addClass(`notice notice-${type}`);
+            notice.find('p').text(message);
+            notice.slideDown();
+            
+            // Auto hide after 3 seconds
+            setTimeout(() => {
+                notice.slideUp();
+            }, 3000);
+        },
+
+        handleTemplateSubmit: function(e) {
+            e.preventDefault();
+            const form = $(this);
+            const submitButton = form.find('button[type="submit"]');
+            const formData = {
+                name: $('#template-name').val().trim(),
+                category: $('#template-category').val(),
+                prompt: $('#template-prompt').val().trim(),
+                variables: $('#template-prompt').val().match(/\(\(([^)]+)\)\)/g)?.map(v => v.replace(/[()]/g, '')) || []
+            };
+
+            // Validate form data
+            if (!formData.name || !formData.prompt) {
+                TemplateEditor.showNotification('Please fill in all required fields', 'error');
+                return;
+            }
+
+            // Disable submit button and show loading state
+            submitButton.prop('disabled', true).text('Saving...');
+
+            // Save template via REST API
+            $.ajax({
+                url: wpApiSettings.root + 'digicontent/v1/templates',
+                method: 'POST',
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('X-WP-Nonce', wpApiSettings.nonce);
+                },
+                data: JSON.stringify(formData),
+                contentType: 'application/json',
+                success: function(response) {
+                    if (response && response.id) {
+                        // Show success message
+                        TemplateEditor.showNotification('Template saved successfully!');
+                        
+                        // Reset form
+                        form[0].reset();
+                        $('.variable-preview').hide();
+
+                        // Reload after a short delay to show the success message
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        throw new Error('Invalid response from server');
+                    }
+                },
+                error: function(xhr) {
+                    const errorMessage = xhr.responseJSON?.message || 'An error occurred while saving the template';
+                    TemplateEditor.showNotification(errorMessage, 'error');
+                },
+                complete: function() {
+                    submitButton.prop('disabled', false).text('Save Template');
+                }
+            });
+        },
+
+        handleTemplateDelete: function() {
+            if (!confirm('Are you sure you want to delete this template?')) {
+                return;
+            }
+
+            const button = $(this);
+            const templateId = button.data('id');
+            button.prop('disabled', true);
+
+            $.ajax({
+                url: wpApiSettings.root + `digicontent/v1/templates/${templateId}`,
+                method: 'DELETE',
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('X-WP-Nonce', wpApiSettings.nonce);
+                },
+                success: function() {
+                    TemplateEditor.showNotification('Template deleted successfully!');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                },
+                error: function(xhr) {
+                    const errorMessage = xhr.responseJSON?.message || 'Error deleting template';
+                    TemplateEditor.showNotification(errorMessage, 'error');
+                    button.prop('disabled', false);
+                }
+            });
+        },
+
+        handleVariableButtonClick: function(e) {
+            e.preventDefault();
+            const variables = ['topic', 'tone', 'length', 'style', 'keywords'];
+            const textarea = $('#template-prompt');
+            const pos = textarea[0].selectionStart;
+            const content = textarea.val();
+
+            // Show variable selection dialog
+            const dialog = $('<div class="variable-dialog"></div>');
+            variables.forEach(variable => {
+                dialog.append(
+                    $('<button class="button"></button>')
+                        .text(variable)
+                        .on('click', function() {
+                            const insertion = '((' + variable + '))';
+                            const newContent = content.slice(0, pos) + insertion + content.slice(pos);
+                            textarea.val(newContent);
+                            dialog.dialog('close');
+                            textarea.focus();
+                        })
+                );
+            });
+
+            dialog.dialog({
+                title: 'Insert Variable',
+                modal: true,
+                width: 300,
+                close: function() {
+                    $(this).dialog('destroy').remove();
+                }
+            });
+        },
+
+        handleVariableChipClick: function() {
+            const variable = $(this).data('variable');
+            const textarea = $('#template-prompt');
+            const pos = textarea[0].selectionStart;
+            const content = textarea.val();
+            const insertion = '((' + variable + '))';
+            const newContent = content.slice(0, pos) + insertion + content.slice(pos);
+            textarea.val(newContent).focus();
+        },
+
+        handleTemplateInput: function() {
+            const content = $(this).val();
+            const preview = $('.variable-preview');
+            const previewContent = $('.preview-content');
+            
+            if (content.includes('((') && content.includes('))')) {
+                preview.show();
+                previewContent.html(content.replace(/\(\(([^)]+)\)\)/g, '<span class="variable-highlight">$1</span>'));
+            } else {
+                preview.hide();
+            }
         },
 
         initVariableAutocomplete: function() {
@@ -63,94 +217,6 @@
             });
         },
 
-        handleVariableButtonClick: function(e) {
-            e.preventDefault();
-            const variables = ['topic', 'tone', 'length', 'style', 'keywords'];
-            const textarea = $('#template-prompt');
-            const pos = textarea[0].selectionStart;
-            const content = textarea.val();
-
-            // Show variable selection dialog
-            const dialog = $('<div class="variable-dialog"></div>');
-            variables.forEach(variable => {
-                dialog.append(
-                    $('<button class="button"></button>')
-                        .text(variable)
-                        .on('click', function() {
-                            const insertion = '((' + variable + '))';
-                            const newContent = content.slice(0, pos) + insertion + content.slice(pos);
-                            textarea.val(newContent);
-                            dialog.dialog('close');
-                            textarea.focus();
-                        })
-                );
-            });
-
-            dialog.dialog({
-                title: 'Insert Variable',
-                modal: true,
-                width: 300,
-                close: function() {
-                    $(this).dialog('destroy').remove();
-                }
-            });
-        },
-
-        handleVariableChipClick: function() {
-            const variable = $(this).data('variable');
-            const textarea = $('#template-prompt');
-            const pos = textarea[0].selectionStart;
-            const content = textarea.val();
-            const insertion = '((' + variable + '))';
-
-            const newContent = content.slice(0, pos) + insertion + content.slice(pos);
-            textarea.val(newContent).focus();
-
-            // Update preview
-            TemplateEditor.updatePreview(newContent);
-        },
-
-        handleTemplateInput: function() {
-            TemplateEditor.updatePreview($(this).val());
-        },
-
-        updatePreview: function(content) {
-            const preview = $('.variable-preview');
-            const previewContent = $('.preview-content');
-            const variables = {};
-
-            // Extract variables from content
-            const matches = content.match(/\(\(([^)]+)\)\)/g) || [];
-            if (matches.length > 0) {
-                preview.show();
-                let previewText = content;
-
-                // Replace variables with sample values
-                matches.forEach(match => {
-                    const variable = match.replace(/[()]/g, '');
-                    if (!variables[variable]) {
-                        variables[variable] = this.getSampleValue(variable);
-                    }
-                    previewText = previewText.replace(match, variables[variable]);
-                });
-
-                previewContent.html(previewText);
-            } else {
-                preview.hide();
-            }
-        },
-
-        getSampleValue: function(variable) {
-            const samples = {
-                topic: 'Artificial Intelligence',
-                tone: 'professional',
-                length: '1000 words',
-                style: 'informative',
-                keywords: 'AI, machine learning, future'
-            };
-            return samples[variable] || `[${variable}]`;
-        },
-
         getCaretCoordinates: function(element, position) {
             const div = document.createElement('div');
             const styles = getComputedStyle(element);
@@ -185,57 +251,6 @@
 
     $(document).ready(function() {
         TemplateEditor.init();
-
-        // Handle template form submission
-        $('#digicontent-new-template-form').on('submit', function(e) {
-            e.preventDefault();
-            const formData = {
-                name: $('#template-name').val(),
-                category: $('#template-category').val(),
-                prompt: $('#template-prompt').val(),
-                variables: $('#template-prompt').val().match(/\(\(([^)]+)\)\)/g)?.map(v => v.replace(/[()]/g, '')) || []
-            };
-
-            // Save template via REST API
-            $.ajax({
-                url: '/wp-json/digicontent/v1/templates',
-                method: 'POST',
-                beforeSend: function(xhr) {
-                    xhr.setRequestHeader('X-WP-Nonce', wpApiSettings.nonce);
-                },
-                data: JSON.stringify(formData),
-                contentType: 'application/json',
-                success: function(response) {
-                    // Reload the page to show the new template
-                    window.location.reload();
-                },
-                error: function(xhr) {
-                    alert('Error saving template: ' + (xhr.responseJSON?.message || 'Unknown error'));
-                }
-            });
-        });
-
-        // Handle template deletion
-        $('.delete-template').on('click', function() {
-            if (!confirm('Are you sure you want to delete this template?')) {
-                return;
-            }
-
-            const templateId = $(this).data('id');
-            $.ajax({
-                url: `/wp-json/digicontent/v1/templates/${templateId}`,
-                method: 'DELETE',
-                beforeSend: function(xhr) {
-                    xhr.setRequestHeader('X-WP-Nonce', wpApiSettings.nonce);
-                },
-                success: function() {
-                    window.location.reload();
-                },
-                error: function(xhr) {
-                    alert('Error deleting template: ' + (xhr.responseJSON?.message || 'Unknown error'));
-                }
-            });
-        });
     });
 
 })(jQuery);

@@ -21,23 +21,29 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('DIGICONTENT_VERSION', '1.0.0');
+define('DIGICONTENT_VERSION', '1.1.0');
 define('DIGICONTENT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('DIGICONTENT_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-// Autoloader function
+// Autoload classes
 spl_autoload_register(function ($class) {
+    // Project-specific namespace prefix
     $prefix = 'DigiContent\\';
-    $base_dir = DIGICONTENT_PLUGIN_DIR . 'includes/';
-
+    $base_dir = plugin_dir_path(__FILE__) . 'includes/';
+    
+    // Check if the class uses the namespace prefix
     $len = strlen($prefix);
     if (strncmp($prefix, $class, $len) !== 0) {
         return;
     }
-
+    
+    // Get the relative class name
     $relative_class = substr($class, $len);
+    
+    // Replace namespace separators with directory separators
     $file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
-
+    
+    // If the file exists, require it
     if (file_exists($file)) {
         require $file;
     }
@@ -45,32 +51,75 @@ spl_autoload_register(function ($class) {
 
 // Initialize plugin
 add_action('plugins_loaded', function () {
-    // Load text domain
-    load_plugin_textdomain('digicontent', false, dirname(plugin_basename(__FILE__)) . '/languages');
-
-    // Initialize plugin classes
     try {
-        new DigiContent\Admin\Settings();
-        new DigiContent\Admin\PostEditor();
-        new DigiContent\Core\AIGenerator();
-    } catch (Exception $e) {
-        error_log('DigiContent Plugin Error: ' . $e->getMessage());
+        // Initialize services
+        $logger = new DigiContent\Core\Services\LoggerService();
+        $database = new DigiContent\Core\Database();
+        $template_repository = new DigiContent\Core\Repository\TemplateRepository($database);
+        $template_service = new DigiContent\Core\Services\TemplateService($template_repository, $logger);
+        
+        // Initialize plugin components with services
+        new DigiContent\Admin\Settings($template_service, $logger);
+        new DigiContent\Admin\PostEditor($template_service, $logger);
+        new DigiContent\Core\AIGenerator($logger);
+        new DigiContent\Core\TemplateManager($template_repository); // Initialize TemplateManager with repository
+        
+        // Load text domain
+        load_plugin_textdomain('digicontent', false, dirname(plugin_basename(__FILE__)) . '/languages');
+        
+    } catch (\Exception $e) {
+        if (isset($logger)) {
+            $logger->error('Plugin initialization error', ['error' => $e->getMessage()]);
+        } else {
+            error_log('DigiContent Plugin Error: ' . $e->getMessage());
+        }
     }
 });
 
 // Activation hook
 register_activation_hook(__FILE__, function () {
-    // Create necessary database tables and options
-    add_option('digicontent_anthropic_key', '');
-    add_option('digicontent_openai_key', '');
-    add_option('digicontent_settings', [
-        'default_model' => 'gpt-4-turbo-preview',
-        'max_tokens' => 1000,
-        'temperature' => 0.7
-    ]);
+    try {
+        $logger = new DigiContent\Core\Services\LoggerService();
+        $logger->info('Plugin activation started');
+        
+        // Initialize database
+        $database = new DigiContent\Core\Database();
+        $database->init();
+        $logger->info('Database tables created');
+        
+        // Add default options
+        add_option('digicontent_anthropic_key', '');
+        add_option('digicontent_openai_key', '');
+        add_option('digicontent_settings', [
+            'default_model' => 'gpt-4-turbo-preview',
+            'max_tokens' => 1000,
+            'temperature' => 0.7
+        ]);
+        
+        $logger->info('Plugin activation completed successfully');
+        
+    } catch (\Exception $e) {
+        if (isset($logger)) {
+            $logger->error('Plugin activation error', ['error' => $e->getMessage()]);
+        }
+        error_log('DigiContent Plugin Activation Error: ' . $e->getMessage());
+    }
 });
 
 // Deactivation hook
 register_deactivation_hook(__FILE__, function () {
-    // Cleanup if necessary
+    try {
+        $logger = new DigiContent\Core\Services\LoggerService();
+        $logger->info('Plugin deactivation started');
+        
+        // Cleanup code here if needed
+        
+        $logger->info('Plugin deactivation completed successfully');
+        
+    } catch (\Exception $e) {
+        if (isset($logger)) {
+            $logger->error('Plugin deactivation error', ['error' => $e->getMessage()]);
+        }
+        error_log('DigiContent Plugin Deactivation Error: ' . $e->getMessage());
+    }
 });
