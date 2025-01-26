@@ -19,6 +19,129 @@
     margin-top: 0;
     padding-bottom: 12px;
     border-bottom: 1px solid #eee;
+    font-size: 1.3em;
+    font-weight: 600;
+}
+
+/* Settings Page */
+.digicontent-settings-wrap {
+    max-width: 1200px;
+}
+
+.digicontent-settings-section {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.digicontent-settings-section h2 {
+    margin-top: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee;
+    font-size: 1.3em;
+    font-weight: 600;
+}
+
+.digicontent-settings-section .description {
+    margin-top: 8px;
+    color: #646970;
+    font-size: 13px;
+}
+
+/* API Settings */
+.digicontent-api-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.digicontent-api-field .tooltip {
+    position: relative;
+    cursor: help;
+}
+
+.digicontent-api-field .tooltip-content {
+    display: none;
+    position: absolute;
+    left: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #1d2327;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    width: 250px;
+    z-index: 100;
+}
+
+.digicontent-api-field .tooltip:hover .tooltip-content {
+    display: block;
+}
+
+/* Debug Settings */
+.digicontent-debug-settings {
+    margin-bottom: 20px;
+}
+
+.digicontent-debug-settings .submit {
+    margin-top: 15px;
+    padding: 0;
+}
+
+/* Switch Toggle */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+}
+
+input:checked + .slider {
+    background-color: #2271b1;
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+.slider.round {
+    border-radius: 24px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
 }
 
 /* Editor Integration */
@@ -528,4 +651,4 @@
     .variable-fields {
         grid-template-columns: 1fr;
     }
-} 
+}

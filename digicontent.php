@@ -54,7 +54,7 @@ add_action('plugins_loaded', function () {
     try {
         // Initialize services
         $logger = new DigiContent\Core\Services\LoggerService();
-        $database = new DigiContent\Core\Database();
+        $database = new DigiContent\Core\Database($logger);
         $template_repository = new DigiContent\Core\Repository\TemplateRepository($database);
         $template_service = new DigiContent\Core\Services\TemplateService($template_repository, $logger);
         
@@ -81,7 +81,7 @@ register_activation_hook(__FILE__, function () {
         $logger->info('Plugin activation started');
         
         // Initialize database
-        $database = new DigiContent\Core\Database();
+        $database = new DigiContent\Core\Database($logger);
         $database->init();
         $logger->info('Database tables created');
         
@@ -124,8 +124,7 @@ register_deactivation_hook(__FILE__, function () {
 
 // Initialize REST API routes
 add_action('rest_api_init', function() {
-    $database = new DigiContent\Core\Database();
-    $logger = new DigiContent\Core\Services\LoggerService();
+    $database = new DigiContent\Core\Database($logger = new DigiContent\Core\Services\LoggerService());
     $template_repository = new DigiContent\Core\Repository\TemplateRepository($database);
     $template_service = new DigiContent\Core\Services\TemplateService($template_repository, $logger);
     

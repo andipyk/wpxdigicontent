@@ -4,174 +4,223 @@ declare(strict_types=1);
 
 namespace DigiContent\Core;
 
-class AIGenerator {
-    private string $anthropic_key;
-    private string $openai_key;
-    private array $settings;
+use DigiContent\Core\Services\LoggerService;
 
-    public function __construct() {
-        $this->anthropic_key = get_option('digicontent_anthropic_key', '');
-        $this->openai_key = get_option('digicontent_openai_key', '');
-        $this->settings = (array) get_option('digicontent_settings', [
-            'default_model' => 'gpt-4-turbo-preview',
-            'max_tokens' => 1000,
-            'temperature' => 0.7
-        ]);
+/**
+ * Handles AI content generation using various models.
+ *
+ * @since 1.0.0
+ */
+final class AIGenerator {
+    private const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+    private const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+    
+    private const MODELS = [
+        'claude-3-sonnet' => [
+            'provider' => 'anthropic',
+            'max_tokens' => 4096,
+        ],
+        'gpt-4-turbo-preview' => [
+            'provider' => 'openai',
+            'max_tokens' => 4096,
+        ],
+    ];
+
+    private LoggerService $logger;
+    private ?string $anthropic_key;
+    private ?string $openai_key;
+
+    /**
+     * Initialize AI generator with API keys.
+     */
+    public function __construct(LoggerService $logger) 
+    {
+        $this->logger = $logger;
+        $this->load_api_keys();
     }
 
-    public function generate(string $prompt, string $model): string {
+    /**
+     * Generate content using specified model.
+     *
+     * @param string $prompt Content generation prompt.
+     * @param string $model AI model to use.
+     * @return string Generated content.
+     * @throws \RuntimeException If content generation fails.
+     */
+    public function generate(string $prompt, string $model = 'claude-3-sonnet'): string 
+    {
         if (empty($prompt)) {
-            throw new \Exception(__('Prompt cannot be empty', 'digicontent'));
+            throw new \RuntimeException('Prompt cannot be empty');
         }
 
-        // Sanitize prompt
-        $prompt = sanitize_text_field($prompt);
-        
-        // Validate model first
         $model = $this->validate_model($model);
-        
+        $sanitized_prompt = $this->sanitize_prompt($prompt);
+
+        $this->logger->info('Generating content', [
+            'model' => $model,
+            'prompt_length' => strlen($sanitized_prompt),
+        ]);
+
         try {
-            // Check if using Claude model
-            if (strpos($model, 'claude') === 0) {
-                $decrypted_key = Encryption::decrypt($this->anthropic_key);
-                if (empty($decrypted_key)) {
-                    throw new \Exception(__('Anthropic API key is not configured. Please add your API key in the settings.', 'digicontent'));
-                }
-                return $this->generate_with_anthropic($prompt, $model);
-            }
-            
-            // If not Claude, then it's OpenAI model
-            $decrypted_key = Encryption::decrypt($this->openai_key);
-            if (empty($decrypted_key)) {
-                throw new \Exception(__('OpenAI API key is not configured. Please add your API key in the settings.', 'digicontent'));
-            }
-            return $this->generate_with_openai($prompt, $model);
+            return match (self::MODELS[$model]['provider']) {
+                'anthropic' => $this->generate_with_anthropic($sanitized_prompt, $model),
+                'openai' => $this->generate_with_openai($sanitized_prompt, $model),
+                default => throw new \RuntimeException('Unsupported AI provider'),
+            };
         } catch (\Exception $e) {
-            error_log(sprintf('[DigiContent] Error in generate method: %s', $e->getMessage()));
-            throw $e;
-        }
-    }
-
-    private function validate_model(string $model): string {
-        $valid_anthropic_models = ['claude-3-sonnet-20240229', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'];
-        $valid_openai_models = ['gpt-4-turbo-preview', 'gpt-4', 'gpt-3.5-turbo'];
-
-        // Check if it's a valid Claude model first
-        if (in_array($model, $valid_anthropic_models)) {
-            return $model;
-        }
-
-        // Then check if it's a valid OpenAI model
-        if (in_array($model, $valid_openai_models)) {
-            return $model;
-        }
-
-        // If model starts with 'claude', return the default Claude model
-        if (strpos($model, 'claude') === 0) {
-            return 'claude-3-sonnet-20240229';
-        }
-
-        // Default to GPT-4 Turbo if not a Claude model
-        return 'gpt-4-turbo-preview';
-    }
-
-    private function generate_with_anthropic(string $prompt, string $model): string {
-        try {
-            $decrypted_key = Encryption::decrypt($this->anthropic_key);
-            if (empty($decrypted_key)) {
-                throw new \Exception(__('Anthropic API key is not configured. Please add your API key in the settings.', 'digicontent'));
-            }
-            $this->anthropic_key = $decrypted_key;
-
-            $request_body = [
+            $this->logger->error('Content generation failed', [
+                'error' => $e->getMessage(),
                 'model' => $model,
-                'max_tokens' => $this->settings['max_tokens'] ?? 1000,
-                'messages' => [['role' => 'user', 'content' => $prompt]]
-            ];
+            ]);
+            throw new \RuntimeException('Failed to generate content: ' . $e->getMessage());
+        }
+    }
 
-            $response = wp_remote_post('https://api.anthropic.com/v1/messages', [
+    /**
+     * Generate content using Anthropic's Claude model.
+     *
+     * @param string $prompt Sanitized prompt.
+     * @param string $model Model identifier.
+     * @return string Generated content.
+     * @throws \RuntimeException If API request fails.
+     */
+    private function generate_with_anthropic(string $prompt, string $model): string 
+    {
+        if (empty($this->anthropic_key)) {
+            throw new \RuntimeException('Anthropic API key not configured');
+        }
+
+        $response = wp_remote_post(
+            self::ANTHROPIC_API_URL,
+            [
                 'headers' => [
                     'Content-Type' => 'application/json',
                     'x-api-key' => $this->anthropic_key,
-                    'anthropic-version' => '2023-06-01'
+                    'anthropic-version' => '2023-06-01',
                 ],
-                'body' => json_encode($request_body),
+                'body' => wp_json_encode([
+                    'model' => $model,
+                    'messages' => [
+                        [
+                            'role' => 'user',
+                            'content' => $prompt,
+                        ],
+                    ],
+                    'max_tokens' => self::MODELS[$model]['max_tokens'],
+                ]),
                 'timeout' => 60,
-                'sslverify' => true
-            ]);
+            ]
+        );
 
-            if (is_wp_error($response)) {
-                error_log(sprintf('[DigiContent] Anthropic API error: %s', $response->get_error_message()));
-                throw new \Exception(__('Failed to connect to Anthropic API. Please try again later.', 'digicontent'));
-            }
+        if (is_wp_error($response)) {
+            throw new \RuntimeException($response->get_error_message());
+        }
 
-            $response_code = wp_remote_retrieve_response_code($response);
-            if ($response_code !== 200) {
-                $error_message = wp_remote_retrieve_response_message($response);
-                error_log(sprintf('[DigiContent] Anthropic API error: %s (HTTP %d)', $error_message, $response_code));
-                throw new \Exception(__('Anthropic API request failed. Please try again later.', 'digicontent'));
-            }
+        $body = json_decode(wp_remote_retrieve_body($response), true);
 
-            $body = json_decode(wp_remote_retrieve_body($response), true);
-            if (empty($body['content'][0]['text'])) {
-                error_log('[DigiContent] Invalid response format from Anthropic API');
-                throw new \Exception(__('Invalid response from Anthropic API. Please try again later.', 'digicontent'));
-            }
+        if (empty($body['content'][0]['text'])) {
+            throw new \RuntimeException('Invalid response from Anthropic API');
+        }
 
-            return $body['content'][0]['text'];
+        return $body['content'][0]['text'];
+    }
+
+    /**
+     * Generate content using OpenAI's GPT model.
+     *
+     * @param string $prompt Sanitized prompt.
+     * @param string $model Model identifier.
+     * @return string Generated content.
+     * @throws \RuntimeException If API request fails.
+     */
+    private function generate_with_openai(string $prompt, string $model): string 
+    {
+        if (empty($this->openai_key)) {
+            throw new \RuntimeException('OpenAI API key not configured');
+        }
+
+        $response = wp_remote_post(
+            self::OPENAI_API_URL,
+            [
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Authorization' => 'Bearer ' . $this->openai_key,
+                ],
+                'body' => wp_json_encode([
+                    'model' => $model,
+                    'messages' => [
+                        [
+                            'role' => 'user',
+                            'content' => $prompt,
+                        ],
+                    ],
+                    'max_tokens' => self::MODELS[$model]['max_tokens'],
+                ]),
+                'timeout' => 60,
+            ]
+        );
+
+        if (is_wp_error($response)) {
+            throw new \RuntimeException($response->get_error_message());
+        }
+
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+
+        if (empty($body['choices'][0]['message']['content'])) {
+            throw new \RuntimeException('Invalid response from OpenAI API');
+        }
+
+        return $body['choices'][0]['message']['content'];
+    }
+
+    /**
+     * Load and decrypt API keys from WordPress options.
+     */
+    private function load_api_keys(): void 
+    {
+        try {
+            $anthropic_key = get_option('digicontent_anthropic_key');
+            $openai_key = get_option('digicontent_openai_key');
+
+            $this->anthropic_key = !empty($anthropic_key) 
+                ? Encryption::decrypt($anthropic_key) 
+                : null;
+
+            $this->openai_key = !empty($openai_key) 
+                ? Encryption::decrypt($openai_key) 
+                : null;
+
         } catch (\Exception $e) {
-            error_log(sprintf('[DigiContent] Error in generate_with_anthropic: %s', $e->getMessage()));
-            throw $e;
+            $this->logger->error('Failed to load API keys', ['error' => $e->getMessage()]);
+            $this->anthropic_key = null;
+            $this->openai_key = null;
         }
     }
 
-    private function generate_with_openai(string $prompt, string $model): string {
-        try {
-            $decrypted_key = Encryption::decrypt($this->openai_key);
-            if (empty($decrypted_key)) {
-                throw new \Exception(__('OpenAI API key is not configured. Please add your API key in the settings.', 'digicontent'));
-            }
-            $this->openai_key = $decrypted_key;
-
-            $request_body = [
-                'model' => $model,
-                'messages' => [['role' => 'user', 'content' => $prompt]],
-                'max_tokens' => $this->settings['max_tokens'] ?? 1000,
-                'temperature' => $this->settings['temperature'] ?? 0.7
-            ];
-
-            $response = wp_remote_post('https://api.openai.com/v1/chat/completions', [
-                'headers' => [
-                    'Content-Type' => 'application/json',
-                    'Authorization' => 'Bearer ' . $this->openai_key
-                ],
-                'body' => json_encode($request_body),
-                'timeout' => 60,
-                'sslverify' => true
-            ]);
-
-            if (is_wp_error($response)) {
-                error_log(sprintf('[DigiContent] OpenAI API error: %s', $response->get_error_message()));
-                throw new \Exception(__('Failed to connect to OpenAI API. Please try again later.', 'digicontent'));
-            }
-
-            $response_code = wp_remote_retrieve_response_code($response);
-            if ($response_code !== 200) {
-                $error_message = wp_remote_retrieve_response_message($response);
-                error_log(sprintf('[DigiContent] OpenAI API error: %s (HTTP %d)', $error_message, $response_code));
-                throw new \Exception(__('OpenAI API request failed. Please try again later.', 'digicontent'));
-            }
-
-            $body = json_decode(wp_remote_retrieve_body($response), true);
-            if (empty($body['choices'][0]['message']['content'])) {
-                error_log('[DigiContent] Invalid response format from OpenAI API');
-                throw new \Exception(__('Invalid response from OpenAI API. Please try again later.', 'digicontent'));
-            }
-
-            return $body['choices'][0]['message']['content'];
-        } catch (\Exception $e) {
-            error_log(sprintf('[DigiContent] Error in generate_with_openai: %s', $e->getMessage()));
-            throw $e;
+    /**
+     * Validate and normalize model selection.
+     *
+     * @param string $model Requested model.
+     * @return string Validated model identifier.
+     * @throws \RuntimeException If model is invalid.
+     */
+    private function validate_model(string $model): string 
+    {
+        if (!isset(self::MODELS[$model])) {
+            $this->logger->info('Invalid model requested, using default', ['model' => $model]);
+            return 'claude-3-sonnet';
         }
+        return $model;
+    }
+
+    /**
+     * Sanitize prompt for API submission.
+     *
+     * @param string $prompt Raw prompt.
+     * @return string Sanitized prompt.
+     */
+    private function sanitize_prompt(string $prompt): string 
+    {
+        return wp_strip_all_tags(trim($prompt));
     }
 }

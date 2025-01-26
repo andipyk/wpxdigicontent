@@ -15,8 +15,8 @@ class TemplateService {
         TemplateRepository $template_repository = null,
         LoggerService $logger = null
     ) {
-        $this->template_repository = $template_repository ?? new TemplateRepository(new Database());
         $this->logger = $logger ?? new LoggerService();
+        $this->template_repository = $template_repository ?? new TemplateRepository(new Database($this->logger));
         $this->ensureTableExists();
     }
     
@@ -27,7 +27,7 @@ class TemplateService {
             
             if ($wpdb->get_var("SHOW TABLES LIKE '$table'") !== $table) {
                 $this->logger->info('Templates table does not exist, creating it now');
-                $database = new Database();
+                $database = new Database($this->logger);
                 $database->init();
                 
                 // Verify table was created
