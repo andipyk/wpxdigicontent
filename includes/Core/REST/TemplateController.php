@@ -121,6 +121,9 @@ class TemplateController {
     public function get_template(WP_REST_Request $request): WP_REST_Response {
         try {
             $template = $this->template_service->getTemplate((int) $request['id']);
+            if (!$template) {
+                return new WP_REST_Response(['message' => 'Template not found'], 404);
+            }
             return new WP_REST_Response($template);
         } catch (\Exception $e) {
             $this->logger->error('Failed to get template', [
@@ -175,4 +178,4 @@ class TemplateController {
             return new WP_REST_Response(['message' => $e->getMessage()], 500);
         }
     }
-} 
+}

@@ -14,6 +14,7 @@ if (!defined('ABSPATH')) {
     <div id="digicontent-notifications"></div>
     
     <div class="digicontent-editor">
+        <?php wp_nonce_field('digicontent_editor_action', 'digicontent_editor_nonce'); ?>
         <div class="digicontent-field">
             <label for="digicontent-template"><?php esc_html_e('Select Template', 'digicontent'); ?></label>
             <select id="digicontent-template" class="widefat">
@@ -54,4 +55,4 @@ if (!defined('ABSPATH')) {
             </button>
         </div>
     </div>
-</div> 
+</div>
