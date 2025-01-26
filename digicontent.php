@@ -60,9 +60,7 @@ add_action('plugins_loaded', function () {
         
         // Initialize plugin components with services
         new DigiContent\Admin\Settings($template_service, $logger);
-        new DigiContent\Admin\PostEditor($template_service, $logger);
-        new DigiContent\Core\AIGenerator($logger);
-        new DigiContent\Core\TemplateManager($template_repository); // Initialize TemplateManager with repository
+        new DigiContent\Admin\Editor($template_service, $logger);
         
         // Load text domain
         load_plugin_textdomain('digicontent', false, dirname(plugin_basename(__FILE__)) . '/languages');
