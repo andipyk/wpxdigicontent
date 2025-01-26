@@ -121,3 +121,14 @@ register_deactivation_hook(__FILE__, function () {
         error_log('DigiContent Plugin Deactivation Error: ' . $e->getMessage());
     }
 });
+
+// Initialize REST API routes
+add_action('rest_api_init', function() {
+    $database = new DigiContent\Core\Database();
+    $logger = new DigiContent\Core\Services\LoggerService();
+    $template_repository = new DigiContent\Core\Repository\TemplateRepository($database);
+    $template_service = new DigiContent\Core\Services\TemplateService($template_repository, $logger);
+    
+    $template_controller = new DigiContent\Core\REST\TemplateController($template_service, $logger);
+    $template_controller->register_routes();
+});

@@ -10,7 +10,10 @@ class DigiContentEditor {
         this.modelSelect = document.getElementById('digicontent-model');
         this.generateButton = document.getElementById('digicontent-generate');
         this.notificationContainer = document.getElementById('digicontent-notifications');
+        this.variablesContainer = document.getElementById('template-variables');
+        this.variableFields = this.variablesContainer.querySelector('.variable-fields');
         
+        this.currentTemplate = null;
         if (!this.editorWrapper) return;
         
         this.init();
@@ -30,7 +33,7 @@ class DigiContentEditor {
     async handleTemplateChange(event) {
         const templateId = event.target.value;
         if (!templateId) {
-            this.promptInput.value = '';
+            this.resetForm();
             return;
         }
         
@@ -48,32 +51,51 @@ class DigiContentEditor {
                 throw new Error(digiContentEditor.i18n.templateLoadError);
             }
             
-            this.promptInput.value = data.data.prompt;
+            this.currentTemplate = data.data;
+            this.promptInput.value = this.currentTemplate.prompt;
+            
+            // Extract and create variable fields
+            const variables = this.extractVariables(this.currentTemplate.prompt);
+            this.createVariableFields(variables);
+            
+            // Show variables section and enable generate button
+            this.variablesContainer.style.display = 'block';
+            this.generateButton.disabled = false;
+            
             this.showNotification('Template loaded successfully', 'success');
             
         } catch (error) {
             console.error('Template load error:', error);
             this.showNotification(error.message || digiContentEditor.i18n.templateLoadError, 'error');
-            this.promptInput.value = '';
+            this.resetForm();
         }
     }
 
     async handleGenerate(event) {
         event.preventDefault();
         
-        const prompt = this.promptInput.value.trim();
-        const model = this.modelSelect.value;
-        
-        if (!prompt) {
-            this.showNotification(digiContentEditor.i18n.emptyPrompt, 'error');
+        if (!this.currentTemplate) {
+            this.showNotification(digiContentEditor.i18n.selectTemplate, 'error');
             return;
         }
+        
+        // Get all variable values
+        const variables = {};
+        this.variableFields.querySelectorAll('input').forEach(input => {
+            variables[input.dataset.variable] = input.value;
+        });
+        
+        // Replace variables in prompt
+        let prompt = this.currentTemplate.prompt;
+        Object.entries(variables).forEach(([key, value]) => {
+            prompt = prompt.replace(new RegExp(`\\(\\(${key}\\)\\)`, 'g'), value);
+        });
         
         try {
             this.generateButton.disabled = true;
             this.showNotification(digiContentEditor.i18n.generating, 'info');
             
-            const response = await this.generateContent(prompt, model);
+            const response = await this.generateContent(prompt, this.modelSelect.value);
             
             if (!response.ok) {
                 const data = await response.json();
@@ -87,8 +109,7 @@ class DigiContentEditor {
             
             // Insert content into editor
             const { createBlock } = wp.blocks;
-            const { dispatch, select } = wp.data;
-            const editor = select('core/editor');
+            const { dispatch } = wp.data;
             
             const block = createBlock('core/paragraph', {
                 content: data.data.content
@@ -103,6 +124,67 @@ class DigiContentEditor {
         } finally {
             this.generateButton.disabled = false;
         }
+    }
+
+    extractVariables(prompt) {
+        const matches = prompt.match(/\(\(([^)]+)\)\)/g) || [];
+        return [...new Set(matches.map(match => match.replace(/[()]/g, '')))];
+    }
+
+    createVariableFields(variables) {
+        this.variableFields.innerHTML = '';
+        
+        variables.forEach(variable => {
+            const field = document.createElement('div');
+            field.className = 'variable-field';
+            
+            const label = document.createElement('label');
+            label.textContent = this.formatVariableName(variable);
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'widefat';
+            input.dataset.variable = variable;
+            input.required = true;
+            
+            // Add event listener to update prompt preview
+            input.addEventListener('input', () => this.updatePromptPreview());
+            
+            field.appendChild(label);
+            field.appendChild(input);
+            this.variableFields.appendChild(field);
+        });
+    }
+
+    formatVariableName(variable) {
+        return variable
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    updatePromptPreview() {
+        if (!this.currentTemplate) return;
+        
+        let prompt = this.currentTemplate.prompt;
+        this.variableFields.querySelectorAll('input').forEach(input => {
+            const value = input.value.trim();
+            if (value) {
+                prompt = prompt.replace(
+                    new RegExp(`\\(\\(${input.dataset.variable}\\)\\)`, 'g'),
+                    value
+                );
+            }
+        });
+        
+        this.promptInput.value = prompt;
+    }
+
+    resetForm() {
+        this.currentTemplate = null;
+        this.promptInput.value = '';
+        this.variablesContainer.style.display = 'none';
+        this.variableFields.innerHTML = '';
+        this.generateButton.disabled = true;
     }
 
     async fetchTemplateContent(templateId) {

@@ -76,18 +76,16 @@ class Settings {
         }
 
         // Enqueue styles and scripts
-        wp_enqueue_style('digicontent-settings', plugins_url('assets/css/settings.css', dirname(__DIR__)));
-        wp_enqueue_style('wp-jquery-ui-dialog');
+        wp_enqueue_style('digicontent-admin', plugins_url('assets/css/admin.css', dirname(__DIR__)));
         
-        wp_enqueue_script('jquery-ui-dialog');
-        wp_enqueue_script('digicontent-template-editor', 
-            plugins_url('assets/js/template-editor.js', dirname(__DIR__)),
-            ['jquery', 'jquery-ui-dialog', 'wp-api'],
-            '1.0.0',
+        wp_enqueue_script('digicontent-template-manager', 
+            plugins_url('assets/js/admin/template-manager.js', dirname(__DIR__)),
+            ['wp-api'],
+            DIGICONTENT_VERSION,
             true
         );
         
-        wp_localize_script('digicontent-template-editor', 'wpApiSettings', [
+        wp_localize_script('digicontent-template-manager', 'wpApiSettings', [
             'root' => esc_url_raw(rest_url()),
             'nonce' => wp_create_nonce('wp_rest')
         ]);
@@ -113,8 +111,7 @@ class Settings {
         // Render API settings section
         ?>
         <div class="wrap digicontent-api-settings">
-            <h2><?php esc_html_e('API Settings', 'digicontent'); ?></h2>
-            <form method="post" action="options.php">
+              <form method="post" action="options.php">
                 <?php
                 settings_fields('digicontent_api_settings');
                 do_settings_sections($this->menu_slug);

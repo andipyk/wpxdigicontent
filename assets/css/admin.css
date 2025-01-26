@@ -2,6 +2,25 @@
  * DigiContent Admin Styles
  */
 
+/* Common */
+.digicontent-wrap {
+    margin: 20px 0;
+}
+
+.digicontent-section {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.digicontent-section h2 {
+    margin-top: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee;
+}
+
 /* Editor Integration */
 .digicontent-editor-wrapper {
     background: #fff;
@@ -11,74 +30,132 @@
     padding: 20px;
 }
 
-.digicontent-editor-header {
-    border-bottom: 1px solid #e5e5e5;
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-}
-
-.digicontent-editor-header h2 {
-    margin: 0;
-    font-size: 1.3em;
-    color: #1d2327;
-}
-
 .digicontent-field {
-    margin-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+.digicontent-field:last-child {
+    margin-bottom: 0;
 }
 
 .digicontent-field label {
     display: block;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
     font-weight: 600;
 }
 
-.digicontent-select,
-.digicontent-textarea {
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
+.digicontent-field .description {
+    margin-top: 8px;
+    color: #646970;
 }
 
-.digicontent-textarea {
-    min-height: 80px;
+/* Template Variables */
+#template-variables {
+    background: #f6f7f7;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
 }
 
-.digicontent-actions {
+#template-variables h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+.variable-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.variable-field {
+    margin-bottom: 0;
+}
+
+.variable-field label {
+    font-weight: normal;
+    color: #1d2327;
+}
+
+/* Settings Page */
+.digicontent-settings-wrap {
+    max-width: 1200px;
+}
+
+.digicontent-api-settings {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 20px;
     margin-top: 20px;
-    text-align: right;
+}
+
+.digicontent-api-settings h2 {
+    margin-top: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.form-table th {
+    padding: 20px 10px 20px 0;
+}
+
+.form-table td {
+    padding: 20px 10px;
 }
 
 /* Tooltips */
-.digicontent-tooltip {
+.tooltip-wrap {
     position: relative;
     display: inline-block;
-    margin-left: 5px;
-    color: #666;
+}
+
+.tooltip-icon {
+    color: #787c82;
     cursor: help;
+    margin-left: 5px;
+    vertical-align: middle;
 }
 
-.digicontent-tooltip .dashicons {
-    font-size: 16px;
-    width: 16px;
-    height: 16px;
-    vertical-align: text-bottom;
-}
-
-.digicontent-tooltip:hover:after {
-    content: attr(data-tooltip);
+.tooltip-content {
+    display: none;
     position: absolute;
-    left: 25px;
-    top: -5px;
-    background: #fff;
-    padding: 8px 12px;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    z-index: 100;
+    top: 100%;
+    left: 0;
     width: 250px;
+    margin-top: 5px;
+    padding: 8px 12px;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
     font-size: 12px;
     line-height: 1.4;
-    z-index: 100;
-    font-weight: normal;
+    color: #50575e;
+}
+
+.tooltip-wrap:hover .tooltip-content {
+    display: block;
+}
+
+/* Notices */
+.digicontent-notice {
+    margin: 15px 0;
+    padding: 10px 15px;
+    border-left: 4px solid #72aee6;
+    background: #fff;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.digicontent-notice.error {
+    border-left-color: #dc3232;
+}
+
+.digicontent-notice.success {
+    border-left-color: #46b450;
 }
 
 /* Loading States */
@@ -89,7 +166,7 @@
 
 .digicontent-loading button {
     position: relative;
-    padding-right: 30px;
+    padding-right: 30px !important;
 }
 
 .digicontent-loading button:after {
@@ -112,40 +189,343 @@
     }
 }
 
-/* Notices */
-.digicontent-notice {
-    margin: 15px 0;
-    padding: 10px 15px;
-    border-left: 4px solid #72aee6;
-    background: #fff;
-    box-shadow: 0 1px 1px rgba(0,0,0,.04);
-}
-
-.digicontent-notice.error {
-    border-left-color: #dc3232;
-}
-
-.digicontent-notice.success {
-    border-left-color: #46b450;
-}
-
 /* Responsive Design */
 @media screen and (max-width: 782px) {
-    .digicontent-editor-wrapper {
-        margin: 10px 0;
+    .digicontent-section,
+    .digicontent-api-settings {
         padding: 15px;
     }
 
-    .digicontent-select,
-    .digicontent-textarea {
-        font-size: 16px; /* Prevent zoom on iOS */
+    .variable-fields {
+        grid-template-columns: 1fr;
     }
 
-    .digicontent-actions {
-        text-align: center;
+    .form-table th {
+        padding-bottom: 5px;
     }
 
-    .digicontent-actions button {
+    .form-table td {
+        padding: 10px 0;
+    }
+
+    .tooltip-content {
+        width: 200px;
+    }
+}
+
+/* Template Management */
+.digicontent-templates-wrap {
+    margin: 20px 0;
+}
+
+.digicontent-templates-wrapper {
+    margin-top: 20px;
+}
+
+.digicontent-templates-list {
+    margin: 20px 0;
+}
+
+.template-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* Template Form */
+.digicontent-template-form {
+    margin-top: 40px;
+    max-width: 1200px;
+}
+
+.prompt-editor {
+    position: relative;
+}
+
+.variable-tools {
+    margin-top: 10px;
+}
+
+.variable-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 300px;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    z-index: 100;
+    padding: 12px;
+    margin-top: 4px;
+}
+
+.variable-group {
+    margin-bottom: 16px;
+}
+
+.variable-group:last-child {
+    margin-bottom: 0;
+}
+
+.variable-group h4 {
+    margin: 0 0 8px;
+    color: #1d2327;
+    font-size: 13px;
+}
+
+.variable-item {
+    display: inline-block;
+    padding: 4px 8px;
+    margin: 0 4px 4px 0;
+    background: #f0f0f1;
+    border: 1px solid #c3c4c7;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #2c3338;
+    text-decoration: none;
+}
+
+.variable-item:hover {
+    background: #f6f7f7;
+    border-color: #8c8f94;
+}
+
+/* Form Elements */
+.template-form .form-table th {
+    width: 200px;
+}
+
+.template-form .form-table td {
+    padding: 15px 10px;
+}
+
+.template-form textarea.code {
+    font-family: Consolas, Monaco, monospace;
+    font-size: 13px;
+    tab-size: 4;
+    line-height: 1.4;
+    resize: vertical;
+}
+
+/* Notices */
+#template-notice {
+    margin: 20px 0;
+}
+
+/* API Settings */
+.digicontent-api-settings {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #ccd0d4;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+    .template-form .form-table th {
         width: 100%;
+        display: block;
+    }
+    
+    .template-form .form-table td {
+        padding: 10px 0;
+    }
+    
+    .variable-list {
+        width: 100%;
+    }
+}
+
+.digicontent-settings {
+    max-width: 800px;
+    margin: 20px 0;
+}
+
+.digicontent-settings h2 {
+    margin-bottom: 1em;
+}
+
+.digicontent-settings .form-table {
+    margin-top: 1em;
+}
+
+.digicontent-settings .form-table th {
+    padding: 20px 10px 20px 0;
+    width: 200px;
+}
+
+.digicontent-settings .form-table td {
+    padding: 15px 10px;
+}
+
+.digicontent-settings .description {
+    color: #666;
+    font-style: italic;
+    margin-top: 4px;
+}
+
+/* Tooltips */
+.tooltip {
+    position: relative;
+    display: inline-block;
+    margin-left: 5px;
+    cursor: help;
+}
+
+.tooltip .dashicons {
+    color: #666;
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+.tooltip .tooltip-text {
+    visibility: hidden;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1.4;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.tooltip .tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+}
+
+.tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Template Form */
+.template-form {
+    max-width: 800px;
+    margin: 20px 0;
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.template-form .form-field {
+    margin-bottom: 1.5em;
+}
+
+.template-form label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.template-form input[type="text"],
+.template-form textarea,
+.template-form select {
+    width: 100%;
+    max-width: 100%;
+}
+
+.template-form textarea {
+    min-height: 150px;
+}
+
+/* Variable Fields */
+#template-variables {
+    margin-top: 1.5em;
+    padding-top: 1.5em;
+    border-top: 1px solid #eee;
+}
+
+.variable-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1em;
+    margin-top: 1em;
+}
+
+.variable-field {
+    margin-bottom: 1em;
+}
+
+.variable-field label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: normal;
+}
+
+.variable-field input {
+    width: 100%;
+}
+
+/* Notifications */
+#digicontent-notifications {
+    margin: 1em 0;
+}
+
+.notice {
+    margin: 0 0 1em;
+}
+
+/* Generate Button */
+.generate-button {
+    margin-top: 1em;
+}
+
+.generate-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* API Settings */
+.api-key-field {
+    position: relative;
+}
+
+.api-key-field input[type="password"] {
+    padding-right: 30px;
+}
+
+.api-key-field .toggle-password {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #666;
+}
+
+.api-key-field .toggle-password:hover {
+    color: #135e96;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+    .digicontent-settings .form-table th {
+        padding-bottom: 0;
+    }
+    
+    .digicontent-settings .form-table td {
+        padding-left: 0;
+    }
+    
+    .variable-fields {
+        grid-template-columns: 1fr;
     }
 } 
