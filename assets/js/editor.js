@@ -1,48 +1,97 @@
 jQuery(document).ready(function($) {
-    const $prompt = $('#digicontent-prompt');
-    const $model = $('#digicontent-model');
-    const $generateBtn = $('#digicontent-generate');
-    const editor = wp.data.dispatch('core/editor');
+    const $promptField = $('#digicontent-prompt');
+    const $modelSelect = $('#digicontent-model');
+    const $generateButton = $('#digicontent-generate');
+    const $templateSelect = $('#digicontent-template');
 
-    $generateBtn.on('click', function() {
-        const prompt = $prompt.val().trim();
-        const model = $model.val();
-
-        if (!prompt) {
-            alert('Please enter a prompt');
+    // Handle template selection
+    $templateSelect.on('change', function() {
+        const templateId = $(this).val();
+        if (!templateId) {
+            $promptField.val('');
             return;
         }
 
-        const $btn = $(this);
-        const originalText = $btn.text();
-        $btn.prop('disabled', true).text(digiContentEditor.generating);
+        $promptField.prop('disabled', true);
+        $generateButton.prop('disabled', true);
 
+        // Fetch template data
         $.ajax({
             url: digiContentEditor.ajaxUrl,
             type: 'POST',
             data: {
-                action: 'generate_ai_content',
-                prompt: prompt,
-                model: model,
-                _ajax_nonce: digiContentEditor.nonce
+                action: 'get_template_content',
+                nonce: digiContentEditor.nonce,
+                template_id: templateId
             },
             success: function(response) {
-                if (response.success && response.data.content) {
-                    editor.insertBlocks(
-                        wp.blocks.createBlock('core/paragraph', {
-                            content: response.data.content
-                        })
-                    );
-                    $prompt.val('');
+                if (response.success && response.data.prompt) {
+                    $promptField.val(response.data.prompt);
                 } else {
-                    alert(response.data || digiContentEditor.error);
+                    alert(digiContentEditor.error);
                 }
             },
             error: function() {
                 alert(digiContentEditor.error);
             },
             complete: function() {
-                $btn.prop('disabled', false).text(originalText);
+                $promptField.prop('disabled', false);
+                $generateButton.prop('disabled', false);
+            }
+        });
+    });
+
+    // Handle content generation
+    $generateButton.on('click', function() {
+        const prompt = $promptField.val();
+        const model = $modelSelect.val();
+
+        if (!prompt) {
+            alert(digiContentEditor.emptyPrompt || 'Please enter a prompt');
+            return;
+        }
+
+        const originalText = $(this).text();
+        $(this).prop('disabled', true).text(digiContentEditor.generating);
+        $promptField.prop('disabled', true);
+        $templateSelect.prop('disabled', true);
+        $modelSelect.prop('disabled', true);
+
+        $.ajax({
+            url: digiContentEditor.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'generate_ai_content',
+                nonce: digiContentEditor.nonce,
+                prompt: prompt,
+                model: model
+            },
+            success: function(response) {
+                if (response.success && response.data.content) {
+                    // Insert content into the editor
+                    if (typeof wp !== 'undefined' && wp.data && wp.data.dispatch('core/editor')) {
+                        wp.data.dispatch('core/editor').insertBlocks(
+                            wp.blocks.parse(response.data.content)
+                        );
+                    } else {
+                        // Fallback for classic editor
+                        const editor = tinyMCE.get('content');
+                        if (editor) {
+                            editor.setContent(response.data.content);
+                        }
+                    }
+                } else {
+                    alert(digiContentEditor.error);
+                }
+            },
+            error: function() {
+                alert(digiContentEditor.error);
+            },
+            complete: function() {
+                $generateButton.prop('disabled', false).text(originalText);
+                $promptField.prop('disabled', false);
+                $templateSelect.prop('disabled', false);
+                $modelSelect.prop('disabled', false);
             }
         });
     });
