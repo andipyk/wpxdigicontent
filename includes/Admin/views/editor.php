@@ -69,8 +69,9 @@ if (!defined('ABSPATH')) {
         </div>
         
         <div class="digicontent-actions">
-            <button type="button" id="digicontent-generate" class="button button-primary">
-                <?php esc_html_e('Generate Content', 'digicontent'); ?>
+            <button type="button" id="digicontent-generate" class="button button-primary" data-loading-text="<?php esc_attr_e('Generating...', 'digicontent'); ?>">
+                <span class="button-text"><?php esc_html_e('Generate Content', 'digicontent'); ?></span>
+                <span class="spinner"></span>
             </button>
         </div>
     </div>
