@@ -302,8 +302,9 @@ class DigiContentEditor {
 
     const notification = document.createElement("div");
     notification.className = `notice notice-${type} is-dismissible`;
-    notification.innerHTML = `<p>${message}</p>`;
-
+    const paragraph = document.createElement('p');
+    paragraph.textContent = message;
+    notification.appendChild(paragraph);
     this.notificationContainer.innerHTML = "";
     this.notificationContainer.appendChild(notification);
 
