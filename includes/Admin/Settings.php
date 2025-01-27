@@ -65,6 +65,12 @@ final class Settings {
     /**
      * Register debug settings.
      */
+    private const DEBUG_SETTINGS_NONCE_ACTION = 'digicontent_debug_settings';
+    private const OPTION_ANTHROPIC_KEY = 'digicontent_anthropic_key';
+    private const OPTION_OPENAI_KEY = 'digicontent_openai_key';
+    private const OPTION_PAGE_DEBUG = 'digicontent_debug_settings';
+    private const OPTION_PAGE_API = 'digicontent_api_settings';
+
     private function register_debug_settings(): void 
     {
         // Add nonce field to debug settings
@@ -72,14 +78,23 @@ final class Settings {
             'digicontent_debug_nonce',
             '',
             function() {
-                wp_nonce_field('digicontent_debug_settings', 'digicontent_debug_nonce');
+                wp_nonce_field(self::DEBUG_SETTINGS_NONCE_ACTION, 'digicontent_debug_nonce');
             },
-            'digicontent_debug_settings',
+            self::OPTION_PAGE_DEBUG,
+            'digicontent_debug_section'
+        );
+
+        // Add debug toggle field
+        add_settings_field(
+            'digicontent_debug_enabled',
+            __('Enable Debug Mode', 'digicontent'),
+            [$this, 'render_debug_toggle_field'],
+            self::OPTION_PAGE_DEBUG,
             'digicontent_debug_section'
         );
 
         register_setting(
-            'digicontent_debug_settings',
+            self::OPTION_PAGE_DEBUG,
             'digicontent_debug_enabled',
             [
                 'type' => 'boolean',
@@ -87,9 +102,9 @@ final class Settings {
                 'sanitize_callback' => 'rest_sanitize_boolean',
                 'validate_callback' => function($value) {
                     if (!isset($_POST['digicontent_debug_nonce']) || 
-                        !wp_verify_nonce($_POST['digicontent_debug_nonce'], 'digicontent_debug_settings')) {
+                        !wp_verify_nonce($_POST['digicontent_debug_nonce'], self::DEBUG_SETTINGS_NONCE_ACTION)) {
                         add_settings_error(
-                            'digicontent_debug_settings',
+                            self::OPTION_PAGE_DEBUG,
                             'invalid_nonce',
                             __('Security check failed. Please try again.', 'digicontent')
                         );
@@ -104,15 +119,7 @@ final class Settings {
             'digicontent_debug_section',
             __('Debug Settings', 'digicontent'),
             [$this, 'render_debug_section'],
-            'digicontent_debug_settings'
-        );
-
-        add_settings_field(
-            'debug_enabled',
-            __('Enable Debug Logging', 'digicontent'),
-            [$this, 'render_debug_toggle_field'],
-            'digicontent_debug_settings',
-            'digicontent_debug_section'
+            self::OPTION_PAGE_DEBUG
         );
     }
 
@@ -193,7 +200,6 @@ final class Settings {
 
         // Render Debug Settings
         echo '<div class="digicontent-settings-section">';
-        echo '<h2>' . esc_html__('Debug Settings', 'digicontent') . '</h2>';
         echo '<form method="post" action="options.php" class="digicontent-debug-settings">';
         settings_fields('digicontent_debug_settings');
         do_settings_sections('digicontent_debug_settings');
@@ -203,7 +209,6 @@ final class Settings {
 
         // Render API Settings
         echo '<div class="digicontent-settings-section">';
-        echo '<h2>' . esc_html__('API Settings', 'digicontent') . '</h2>';
         echo '<form method="post" action="options.php" class="digicontent-api-settings">';
         settings_fields('digicontent_api_settings');
         do_settings_sections('digicontent_api_settings');
@@ -217,16 +222,21 @@ final class Settings {
      */
     private function enqueue_assets(): void 
     {
+        $css_file = dirname(__DIR__) . '/assets/css/admin.css';
+        $js_file = dirname(__DIR__) . '/assets/js/admin/template-manager.js';
+
         wp_enqueue_style(
             'digicontent-admin',
-            plugins_url('assets/css/admin.css', dirname(__DIR__))
+            plugins_url('assets/css/admin.css', dirname(__DIR__)),
+            [],
+            file_exists($css_file) ? filemtime($css_file) : DIGICONTENT_VERSION
         );
         
         wp_enqueue_script(
             'digicontent-template-manager',
             plugins_url('assets/js/admin/template-manager.js', dirname(__DIR__)),
             ['wp-api'],
-            DIGICONTENT_VERSION,
+            file_exists($js_file) ? filemtime($js_file) : DIGICONTENT_VERSION,
             true
         );
         
@@ -384,17 +394,24 @@ final class Settings {
 
         if (isset($_GET['settings-updated']) && $_GET['settings-updated']) {
             $option_page = $_GET['option_page'] ?? '';
-            $message = match ($option_page) {
-                'digicontent_debug_settings' => __('Debug settings saved successfully.', 'digicontent'),
-                'digicontent_api_settings' => __('API settings saved successfully.', 'digicontent'),
-                default => __('Settings saved successfully.', 'digicontent'),
-            };
-            
-            ?>
-            <div class="notice notice-success is-dismissible">
-                <p><?php echo esc_html($message); ?></p>
-            </div>
-            <?php
+            $message = '';
+
+            // Tentukan pesan berdasarkan halaman pengaturan yang disimpan
+            if ($option_page === 'digicontent_debug_settings') {
+                $message = __('Debug settings saved successfully.', 'digicontent');
+            } elseif ($option_page === 'digicontent_api_settings') {
+                $message = __('API settings saved successfully.', 'digicontent');
+            } elseif ($option_page === 'options') {
+                $message = __('Settings saved successfully.', 'digicontent');
+            }
+
+            if ($message) {
+                ?>
+                <div class="notice notice-success is-dismissible">
+                    <p><?php echo esc_html($message); ?></p>
+                </div>
+                <?php
+            }
         }
     }
 
@@ -409,11 +426,19 @@ final class Settings {
             return '';
         }
 
-        // Validate Anthropic key format (starts with 'sk-ant-')
+        // Get current option name being processed
         $option_name = current_filter();
-        if ($option_name === 'sanitize_option_digicontent_anthropic_key' && !preg_match('/^sk-ant-[a-zA-Z0-9]{48}$/', $value)) {
+        if (!$option_name) {
+            return '';
+        }
+        
+        // Remove 'sanitize_option_' prefix to get the actual option name
+        $key_type = str_replace('sanitize_option_', '', $option_name);
+
+        // Validate Anthropic key format (starts with 'sk-ant-')
+        if ($key_type === self::OPTION_ANTHROPIC_KEY && !preg_match('/^sk-ant-[A-Za-z0-9]+$/', $value)) {
             add_settings_error(
-                'digicontent_api_settings',
+                self::OPTION_PAGE_API,
                 'invalid_key_format',
                 __('Invalid Anthropic API key format. Key should start with "sk-ant-".', 'digicontent')
             );
@@ -421,9 +446,9 @@ final class Settings {
         }
 
         // Validate OpenAI key format (starts with 'sk-')
-        if ($option_name === 'sanitize_option_digicontent_openai_key' && !preg_match('/^sk-[a-zA-Z0-9]{48}$/', $value)) {
+        if ($key_type === self::OPTION_OPENAI_KEY && !preg_match('/^sk-[A-Za-z0-9]+$/', $value)) {
             add_settings_error(
-                'digicontent_api_settings',
+                self::OPTION_PAGE_API,
                 'invalid_key_format',
                 __('Invalid OpenAI API key format. Key should start with "sk-".', 'digicontent')
             );
@@ -434,7 +459,7 @@ final class Settings {
         if ($encrypted === '' && !empty($value)) {
             $this->logger->error('API key encryption failed');
             add_settings_error(
-                'digicontent_api_settings',
+                self::OPTION_PAGE_API,
                 'encryption_failed',
                 __('Failed to securely store API key. Please try again.', 'digicontent')
             );
