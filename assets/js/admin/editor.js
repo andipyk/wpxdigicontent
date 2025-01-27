@@ -13,6 +13,7 @@ class DigiContentEditor {
     this.editorWrapper = document.querySelector(".digicontent-editor-wrapper");
     this.templateSelect = document.getElementById("digicontent-template");
     this.promptInput = document.getElementById("digicontent-prompt");
+    this.directPromptInput = document.getElementById("digicontent-direct-prompt");
     this.modelSelect = document.getElementById("digicontent-model");
     this.generateButton = document.getElementById("digicontent-generate");
     this.notificationContainer = document.getElementById(
@@ -21,6 +22,9 @@ class DigiContentEditor {
     this.variablesContainer = document.getElementById("template-variables");
     this.variableFields =
       this.variablesContainer?.querySelector(".variable-fields");
+    this.templateSection = document.getElementById("template-section");
+    this.directPromptSection = document.getElementById("direct-prompt-section");
+    this.useTemplateToggle = document.getElementById("use-template-toggle");
     this.currentTemplate = null;
   }
 
@@ -37,6 +41,17 @@ class DigiContentEditor {
       "click",
       this.handleGenerate.bind(this)
     );
+    this.useTemplateToggle?.addEventListener(
+      "change",
+      this.handleTemplateToggle.bind(this)
+    );
+  }
+
+  handleTemplateToggle(event) {
+    const useTemplate = event.target.checked;
+    this.templateSection.style.display = useTemplate ? "block" : "none";
+    this.directPromptSection.style.display = useTemplate ? "none" : "block";
+    this.generateButton.disabled = false;
   }
 
   async handleTemplateChange(event) {
@@ -91,17 +106,25 @@ class DigiContentEditor {
   async handleGenerate(event) {
     event.preventDefault();
 
-    if (!this.validateTemplate()) return;
-
-    const prompt = this.buildPrompt();
+    let prompt;
+    if (this.useTemplateToggle.checked) {
+      if (!this.validateTemplate()) return;
+      prompt = this.buildPrompt();
+    } else {
+      prompt = this.directPromptInput.value.trim();
+      if (!prompt) {
+        this.showNotification(digiContentEditor.i18n.emptyPrompt, "error");
+        return;
+      }
+    }
 
     try {
       this.setGeneratingState(true);
-      const response = await this.generateContent(
+      const response = this.generateContent(
         prompt,
         this.modelSelect.value
       );
-      await this.handleGenerateResponse(response);
+      this.handleGenerateResponse(response);
     } catch (error) {
       this.handleError(error, "Generation error");
     } finally {
