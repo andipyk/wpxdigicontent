@@ -2,14 +2,14 @@
 
 <div class="wrap digicontent-templates-wrap">
     <h1><?php esc_html_e('Content Templates', 'digicontent'); ?></h1>
-    
+
     <div id="template-notice" class="notice" style="display: none;">
         <p></p>
     </div>
 
     <div class="digicontent-templates-wrapper">
         <p class="description"><?php esc_html_e('Manage your content templates here. These templates can be used to generate AI content with custom variables.', 'digicontent'); ?></p>
-        
+
         <?php if (!empty($templates)): ?>
             <div class="digicontent-templates-list">
                 <table class="wp-list-table widefat fixed striped">
@@ -48,7 +48,8 @@
 
         <div class="digicontent-template-form">
             <h2><?php esc_html_e('Add New Template', 'digicontent'); ?></h2>
-            <form id="digicontent-new-template-form" class="template-form">
+            <form id="digicontent-new-template-form" class="template-form" novalidate>
+                <?php wp_nonce_field('digicontent_template_nonce'); ?>
                 <table class="form-table">
                     <tr>
                         <th scope="row">
