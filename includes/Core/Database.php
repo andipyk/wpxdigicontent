@@ -1,21 +1,197 @@
 <?php
 
+declare(strict_types=1);
+
 namespace DigiContent\Core;
 
-class Database {
-    private $wpdb;
-    private $table_prefix;
-    private $tables;
+use DigiContent\Core\Services\LoggerService;
 
-    public function __construct() {
+/**
+ * Handles database operations for the DigiContent plugin.
+ *
+ * @since 1.0.0
+ */
+final class Database {
+    private const TABLES = [
+        'templates' => [
+            'id' => 'bigint(20) unsigned NOT NULL AUTO_INCREMENT',
+            'name' => 'varchar(255) NOT NULL',
+            'category' => 'varchar(50) NOT NULL',
+            'prompt' => 'text NOT NULL',
+            'variables' => 'text DEFAULT NULL CHECK (variables IS NULL OR JSON_VALID(variables))',
+            'created_at' => 'datetime NOT NULL DEFAULT CURRENT_TIMESTAMP',
+            'updated_at' => 'datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+            'PRIMARY KEY' => '(id)',
+            'KEY' => 'category (category)',
+        ],
+        'logs' => [
+            'id' => 'bigint(20) unsigned NOT NULL AUTO_INCREMENT',
+            'level' => "enum('info','error','debug') NOT NULL DEFAULT 'info'",
+            'message' => 'text NOT NULL',
+            'context' => 'text DEFAULT NULL',
+            'created_at' => 'datetime NOT NULL DEFAULT CURRENT_TIMESTAMP',
+            'PRIMARY KEY' => '(id)',
+            'KEY' => 'level (level)',
+        ],
+        'settings' => [
+            'id' => 'bigint(20) unsigned NOT NULL AUTO_INCREMENT',
+            'option_name' => 'varchar(255) NOT NULL',
+            'option_value' => 'longtext DEFAULT NULL',
+            'created_at' => 'datetime NOT NULL DEFAULT CURRENT_TIMESTAMP',
+            'updated_at' => 'datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+            'PRIMARY KEY' => '(id)',
+            'UNIQUE KEY' => 'option_name (option_name)',
+        ],
+    ];
+
+    private \wpdb $wpdb;
+    private LoggerService $logger;
+    private string $charset_collate;
+    private string $table_prefix;
+
+    /**
+     * Initialize database handler.
+     */
+    public function __construct(LoggerService $logger) 
+    {
         global $wpdb;
+        
         $this->wpdb = $wpdb;
-        $this->table_prefix = $wpdb->prefix . 'digicontent_';
-        $this->tables = [
-            'templates' => $this->table_prefix . 'templates',
-            'logs' => $this->table_prefix . 'logs',
-            'settings' => $this->table_prefix . 'settings'
-        ];
+        $this->logger = $logger;
+        $this->charset_collate = $this->wpdb->get_charset_collate();
+        $this->table_prefix = $this->wpdb->prefix . 'digicontent_';
+    }
+
+    /**
+     * Create plugin database tables.
+     *
+     * @throws \RuntimeException If table creation fails.
+     */
+    public function create_tables(): void 
+    {
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        
+        $this->wpdb->query('START TRANSACTION');
+        try {
+            foreach (self::TABLES as $table => $columns) {
+                $table_name = $this->get_table_name($table);
+                $sql = $this->build_create_table_sql($table_name, $columns);
+
+                if (!$this->execute_table_creation($sql)) {
+                    $this->wpdb->query('ROLLBACK');
+                    throw new \RuntimeException(
+                        sprintf('Failed to create table: %s', $table_name)
+                    );
+                }
+
+                $this->logger->info(
+                    sprintf('Created table: %s', $table_name)
+                );
+            }
+            $this->wpdb->query('COMMIT');
+        } catch (\Exception $e) {
+            $this->wpdb->query('ROLLBACK');
+            throw $e;
+        }
+    }
+
+    /**
+     * Drop plugin database tables.
+     */
+    public function drop_tables(): void 
+    {
+        foreach (array_keys(self::TABLES) as $table) {
+            $table_name = $this->get_table_name($table);
+            
+            $this->wpdb->query("DROP TABLE IF EXISTS {$table_name}");
+            
+            $this->logger->info(
+                sprintf('Dropped table: %s', $table_name)
+            );
+        }
+    }
+
+    /**
+     * Get full table name with prefix.
+     *
+     * @param string $table Base table name.
+     * @return string Full table name.
+     */
+    public function get_table_name(string $table): string 
+    {
+        return $this->table_prefix . $table;
+    }
+
+    /**
+     * Check if a table exists.
+     *
+     * @param string $table Base table name.
+     * @return bool True if table exists, false otherwise.
+     */
+    public function table_exists(string $table): bool 
+    {
+        $table_name = $this->get_table_name($table);
+        $result = $this->wpdb->get_var(
+            $this->wpdb->prepare(
+                'SHOW TABLES LIKE %s',
+                $table_name
+            )
+        );
+
+        return $result === $table_name;
+    }
+
+    /**
+     * Build CREATE TABLE SQL statement.
+     *
+     * @param string $table_name Full table name.
+     * @param array<string, string> $columns Table columns and their definitions.
+     * @return string SQL statement.
+     */
+    private function build_create_table_sql(string $table_name, array $columns): string 
+    {
+        $sql = "CREATE TABLE {$table_name} (\n";
+        
+        foreach ($columns as $column => $definition) {
+            if (in_array($column, ['PRIMARY KEY', 'UNIQUE KEY', 'KEY'], true)) {
+                $sql .= "\t{$column} {$definition},\n";
+            } else {
+                $sql .= "\t{$column} {$definition},\n";
+            }
+        }
+        
+        $sql = rtrim($sql, ",\n");
+        $sql .= "\n) {$this->charset_collate};";
+        
+        return $sql;
+    }
+
+    /**
+     * Execute table creation SQL.
+     *
+     * @param string $sql CREATE TABLE SQL statement.
+     * @return bool True on success, false on failure.
+     */
+    private function execute_table_creation(string $sql): bool 
+    {
+        $result = dbDelta($sql);
+        
+        if (empty($result)) {
+            return false;
+        }
+
+        foreach ($result as $table => $message) {
+            if (str_contains($message, 'Created table')) {
+                $this->logger->info($message);
+            } elseif (str_contains($message, 'Modified table')) {
+                $this->logger->info($message);
+            } else {
+                $this->logger->error($message);
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -28,70 +204,6 @@ class Database {
     }
 
     /**
-     * Create required database tables
-     *
-     * @return void
-     */
-    private function create_tables() {
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-
-        $charset_collate = $this->wpdb->get_charset_collate();
-
-        // Templates table
-        $sql = "CREATE TABLE IF NOT EXISTS {$this->tables['templates']} (
-            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-            name varchar(255) NOT NULL,
-            category varchar(50) NOT NULL,
-            prompt text NOT NULL,
-            variables text,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            KEY category (category),
-            KEY created_at (created_at)
-        ) $charset_collate;";
-
-        dbDelta($sql);
-
-        // Logs table for debugging
-        $sql = "CREATE TABLE IF NOT EXISTS {$this->tables['logs']} (
-            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-            level varchar(20) NOT NULL,
-            message text NOT NULL,
-            context text,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            KEY level (level),
-            KEY created_at (created_at)
-        ) $charset_collate;";
-
-        dbDelta($sql);
-
-        // Settings table
-        $sql = "CREATE TABLE IF NOT EXISTS {$this->tables['settings']} (
-            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-            setting_key varchar(255) NOT NULL,
-            setting_value text,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            UNIQUE KEY setting_key (setting_key)
-        ) $charset_collate;";
-
-        dbDelta($sql);
-    }
-
-    /**
-     * Get table name
-     *
-     * @param string $table Table identifier
-     * @return string Full table name
-     */
-    public function get_table_name($table) {
-        return isset($this->tables[$table]) ? $this->tables[$table] : '';
-    }
-
-    /**
      * Log message for debugging
      *
      * @param string $level Log level (info, warning, error)
@@ -101,7 +213,7 @@ class Database {
      */
     public function log($level, $message, $context = []) {
         return $this->wpdb->insert(
-            $this->tables['logs'],
+            $this->get_table_name('logs'),
             [
                 'level' => $level,
                 'message' => $message,
@@ -133,7 +245,7 @@ class Database {
             $where = $this->wpdb->prepare(' WHERE level = %s', $args['level']);
         }
 
-        $sql = "SELECT * FROM {$this->tables['logs']}{$where}
+        $sql = "SELECT * FROM {$this->get_table_name('logs')}{$where}
                 ORDER BY {$args['orderby']} {$args['order']}
                 LIMIT %d OFFSET %d";
 
@@ -157,12 +269,43 @@ class Database {
             $where_values[] = $level;
         }
 
-        $sql = "DELETE FROM {$this->tables['logs']}{$where}";
+        $sql = "DELETE FROM {$this->get_table_name('logs')}{$where}";
 
         if (!empty($where_values)) {
             $sql = $this->wpdb->prepare($sql, ...$where_values);
         }
 
         return $this->wpdb->query($sql);
+    }
+
+    /**
+     * Check if required database tables exist
+     *
+     * @return bool True if all required tables exist, false otherwise
+     */
+    public function check_tables_exist(): bool {
+        global $wpdb;
+        
+        try {
+            $required_tables = ['templates', 'logs'];
+            $tables = array_map(
+                fn($table) => $this->get_table_name($table),
+                array_intersect($required_tables, array_keys(self::TABLES))
+            );
+            
+            foreach ($tables as $table) {
+                $exists = $wpdb->get_var("SHOW TABLES LIKE '$table'");
+                if (!$exists) {
+                    $this->logger->error('Required table missing', ['table' => $table]);
+                    return false;
+                }
+            }
+            
+            return true;
+            
+        } catch (\Exception $e) {
+            $this->logger->error('Error checking tables', ['error' => $e->getMessage()]);
+            return false;
+        }
     }
 }

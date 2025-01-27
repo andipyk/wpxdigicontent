@@ -11,6 +11,10 @@ class TemplateRepository {
         $this->db = $db;
     }
 
+    public function getTableName(): string {
+        return $this->db->get_table_name('templates');
+    }
+
     /**
      * Create a new template
      *
@@ -19,7 +23,7 @@ class TemplateRepository {
      */
     public function create($data) {
         global $wpdb;
-        $table = $this->db->get_table_name('templates');
+        $table = $this->getTableName();
 
         $result = $wpdb->insert(
             $table,
@@ -51,7 +55,7 @@ class TemplateRepository {
      */
     public function get($id) {
         global $wpdb;
-        $table = $this->db->get_table_name('templates');
+        $table = $this->getTableName();
 
         $template = $wpdb->get_row(
             $wpdb->prepare("SELECT * FROM $table WHERE id = %d", $id)
@@ -72,7 +76,7 @@ class TemplateRepository {
      */
     public function get_all($args = []) {
         global $wpdb;
-        $table = $this->db->get_table_name('templates');
+        $table = $this->getTableName();
 
         $defaults = [
             'category' => '',
@@ -113,7 +117,7 @@ class TemplateRepository {
      */
     public function update($id, $data) {
         global $wpdb;
-        $table = $this->db->get_table_name('templates');
+        $table = $this->getTableName();
 
         $result = $wpdb->update(
             $table,
@@ -148,7 +152,7 @@ class TemplateRepository {
      */
     public function delete($id) {
         global $wpdb;
-        $table = $this->db->get_table_name('templates');
+        $table = $this->getTableName();
 
         $result = $wpdb->delete(
             $table,

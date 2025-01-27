@@ -1,0 +1,404 @@
+/**
+ * DigiContent Admin Styles
+ */
+
+/* Common Layout */
+.digicontent-wrap,
+.digicontent-settings-wrap {
+    margin: 20px 0;
+    max-width: 1200px;
+}
+
+.digicontent-section,
+.digicontent-settings-section,
+.digicontent-templates-wrap,
+.digicontent-api-settings {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.digicontent-section h2,
+.digicontent-settings-section h2 {
+    margin-top: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee;
+    font-size: 1.3em;
+    font-weight: 600;
+}
+
+/* Form Elements */
+.digicontent-api-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.description {
+    margin-top: 8px;
+    color: #595959;
+    font-size: 13px;
+}
+
+/* Tooltips */
+.tooltip {
+    position: relative;
+    cursor: help;
+}
+
+.tooltip-icon {
+    color: #595959;
+    cursor: help;
+    margin-left: 5px;
+    vertical-align: middle;
+}
+
+.tooltip-content {
+    display: none;
+    position: absolute;
+    left: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #1d2327;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    width: 250px;
+    z-index: 100;
+}
+
+.tooltip:hover .tooltip-content {
+    display: block;
+}
+
+/* Variable Fields */
+.variable-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.variable-chip {
+    background: #e9ecef;
+    padding: 5px 10px;
+    border-radius: 15px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background-color 0.2s;
+}
+
+.variable-chip:hover,
+.variable-chip:focus {
+    background: #f6f7f7;
+    border-color: #8c8f94;
+    outline: 2px solid #2271b1;
+    outline-offset: 1px;
+}
+
+.variable-highlight {
+    background: #e9ecef;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+
+/* Debug Settings */
+.digicontent-debug-settings {
+    margin-bottom: 20px;
+}
+
+.digicontent-debug-settings .submit {
+    margin-top: 15px;
+    padding: 0;
+}
+
+/* Switch Toggle */
+.switch,
+.toggle-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 5px 0;
+}
+
+.switch input,
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+    background-color: #ccc;
+    margin-right: 10px;
+    transition: .4s;
+}
+
+.slider.round {
+    border-radius: 20px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .4s;
+}
+
+input:checked + .slider {
+    background-color: #2271b1;
+}
+
+input:checked + .slider:before {
+    transform: translateX(20px);
+}
+
+/* Notifications */
+#template-notice {
+    margin: 15px 0;
+    padding: 10px 15px;
+    border-left-width: 4px;
+}
+
+.notice-success {
+    border-left-color: #46b450;
+}
+
+.notice-error {
+    border-left-color: #dc3232;
+}
+
+/* Editor Layout */
+.digicontent-editor-wrapper {
+    max-width: 800px;
+    margin: 20px auto;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 25px;
+}
+
+.digicontent-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.digicontent-field {
+    margin-bottom: 20px;
+}
+
+.digicontent-field label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #1d2327;
+}
+
+.digicontent-field select,
+.digicontent-field textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    background-color: #fff;
+    font-size: 14px;
+    transition: border-color 0.2s ease;
+}
+
+.digicontent-field select:focus,
+.digicontent-field textarea:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: none;
+}
+
+/* Template Variables Section */
+#template-variables {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 6px;
+    margin: 15px 0;
+}
+
+#template-variables h3 {
+    margin-top: 0;
+    color: #1d2327;
+    font-size: 16px;
+    margin-bottom: 15px;
+}
+
+.variable-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.variable-field {
+    background: #fff;
+    padding: 15px;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.variable-field label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: #1d2327;
+}
+
+.variable-field input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.variable-field input:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: none;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    cursor: pointer;
+}
+
+.toggle-switch input {
+    display: none;
+}
+
+.toggle-switch .slider {
+    position: relative;
+    width: 44px;
+    height: 22px;
+    background-color: #ccd0d4;
+    margin-right: 10px;
+    border-radius: 22px;
+    transition: background-color 0.2s;
+}
+
+.toggle-switch .slider:before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    background-color: white;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.2s;
+}
+
+.toggle-switch input:checked + .slider {
+    background-color: #2271b1;
+}
+
+.toggle-switch input:checked + .slider:before {
+    transform: translateX(22px);
+}
+
+/* Generate Button */
+#digicontent-generate {
+    background: #2271b1;
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    align-self: flex-start;
+}
+
+#digicontent-generate:hover {
+    background: #135e96;
+}
+
+#digicontent-generate:disabled {
+    background: #ccd0d4;
+    cursor: not-allowed;
+}
+
+/* Notifications */
+#digicontent-notifications {
+    margin-bottom: 20px;
+}
+
+.notice {
+    padding: 12px 15px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.notice p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.notice-success {
+    background-color: #edfaef;
+    border-left: 4px solid #46b450;
+    color: #1a4731;
+}
+
+.notice-error {
+    background-color: #fbeaea;
+    border-left: 4px solid #dc3232;
+    color: #8a1f11;
+}
+
+.notice-info {
+    background-color: #e5f5fa;
+    border-left: 4px solid #00a0d2;
+    color: #0a4b78;
+}
+
+/* Model Selection */
+#digicontent-model {
+    max-width: 300px;
+}
+
+/* Prompt Areas */
+#digicontent-prompt,
+#digicontent-direct-prompt {
+    min-height: 120px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    line-height: 1.5;
+    resize: vertical;
+}
+
+/* Description Text */
+.description {
+    color: #646970;
+    font-size: 13px;
+    font-style: italic;
+    margin-top: 8px;
+}

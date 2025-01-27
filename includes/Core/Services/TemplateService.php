@@ -15,8 +15,34 @@ class TemplateService {
         TemplateRepository $template_repository = null,
         LoggerService $logger = null
     ) {
-        $this->template_repository = $template_repository ?? new TemplateRepository(new Database());
         $this->logger = $logger ?? new LoggerService();
+        $this->template_repository = $template_repository ?? new TemplateRepository(new Database($this->logger));
+        $this->ensureTableExists();
+    }
+    
+    private function ensureTableExists(): void {
+        try {
+            global $wpdb;
+            $table = $this->template_repository->getTableName();
+            
+            if ($wpdb->get_var("SHOW TABLES LIKE '$table'") !== $table) {
+                $this->logger->info('Templates table does not exist, creating it now');
+                $database = new Database($this->logger);
+                $database->init();
+                
+                // Verify table was created
+                if ($wpdb->get_var("SHOW TABLES LIKE '$table'") !== $table) {
+                    throw new TemplateException('Failed to create templates table');
+                }
+                
+                $this->logger->info('Templates table created successfully');
+            }
+        } catch (\Exception $e) {
+            $this->logger->error('Error ensuring templates table exists', [
+                'error' => $e->getMessage()
+            ]);
+            throw new TemplateException('Database initialization failed: ' . $e->getMessage());
+        }
     }
     
     public function createTemplate(array $data): int {
@@ -48,6 +74,7 @@ class TemplateService {
     
     public function getTemplates(array $args = []): array {
         try {
+            $this->ensureTableExists();
             $this->logger->info('Fetching templates', ['args' => $args]);
             return $this->template_repository->get_all($args);
         } catch (\Exception $e) {
@@ -56,6 +83,26 @@ class TemplateService {
                 'args' => $args
             ]);
             throw new TemplateException('Failed to fetch templates: ' . $e->getMessage());
+        }
+    }
+    
+    public function getTemplate(int $id): ?object {
+        try {
+            $this->ensureTableExists();
+            $this->logger->info('Fetching template', ['id' => $id]);
+            $template = $this->template_repository->get($id);
+            
+            if (!$template) {
+                throw new TemplateException('Template not found');
+            }
+            
+            return $template;
+        } catch (\Exception $e) {
+            $this->logger->error('Error fetching template', [
+                'error' => $e->getMessage(),
+                'id' => $id
+            ]);
+            throw new TemplateException('Failed to fetch template: ' . $e->getMessage());
         }
     }
     
@@ -106,6 +153,31 @@ class TemplateService {
                 'id' => $id
             ]);
             throw new TemplateException('Failed to delete template: ' . $e->getMessage());
+        }
+    }
+
+    public function generateContent(string $prompt, string $model): string {
+        try {
+            $this->logger->info('Generating AI content', [
+                'prompt' => $prompt,
+                'model' => $model
+            ]);
+
+            // TODO: Implement actual AI content generation
+            // For now, return a placeholder
+            return sprintf(
+                "Generated content for prompt: %s using model: %s\n\nThis is a placeholder. Implement actual AI integration.",
+                $prompt,
+                $model
+            );
+            
+        } catch (\Exception $e) {
+            $this->logger->error('Error generating content', [
+                'error' => $e->getMessage(),
+                'prompt' => $prompt,
+                'model' => $model
+            ]);
+            throw new TemplateException('Failed to generate content: ' . $e->getMessage());
         }
     }
 } 

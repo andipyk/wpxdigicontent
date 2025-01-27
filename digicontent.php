@@ -54,15 +54,14 @@ add_action('plugins_loaded', function () {
     try {
         // Initialize services
         $logger = new DigiContent\Core\Services\LoggerService();
-        $database = new DigiContent\Core\Database();
+        $encryption = new DigiContent\Core\Services\EncryptionService($logger);
+        $database = new DigiContent\Core\Database($logger);
         $template_repository = new DigiContent\Core\Repository\TemplateRepository($database);
         $template_service = new DigiContent\Core\Services\TemplateService($template_repository, $logger);
         
         // Initialize plugin components with services
-        new DigiContent\Admin\Settings($template_service, $logger);
-        new DigiContent\Admin\PostEditor($template_service, $logger);
-        new DigiContent\Core\AIGenerator($logger);
-        new DigiContent\Core\TemplateManager($template_repository); // Initialize TemplateManager with repository
+        new DigiContent\Admin\Settings($template_service, $logger, $encryption);
+        new DigiContent\Admin\Editor($template_service, $logger);
         
         // Load text domain
         load_plugin_textdomain('digicontent', false, dirname(plugin_basename(__FILE__)) . '/languages');
@@ -83,7 +82,7 @@ register_activation_hook(__FILE__, function () {
         $logger->info('Plugin activation started');
         
         // Initialize database
-        $database = new DigiContent\Core\Database();
+        $database = new DigiContent\Core\Database($logger);
         $database->init();
         $logger->info('Database tables created');
         
@@ -121,5 +120,33 @@ register_deactivation_hook(__FILE__, function () {
             $logger->error('Plugin deactivation error', ['error' => $e->getMessage()]);
         }
         error_log('DigiContent Plugin Deactivation Error: ' . $e->getMessage());
+    }
+});
+
+// Initialize REST API routes
+add_action('rest_api_init', function() {
+    try {
+        // Initialize services with proper error handling
+        $logger = new DigiContent\Core\Services\LoggerService();
+        
+        $database = new DigiContent\Core\Database($logger);
+        if (!$database->check_tables_exist()) {
+            $logger->error('Required database tables are missing');
+            return;
+        }
+        
+        $template_repository = new DigiContent\Core\Repository\TemplateRepository($database);
+        $template_service = new DigiContent\Core\Services\TemplateService($template_repository, $logger);
+        
+        // Register REST routes with proper authentication
+        $template_controller = new DigiContent\Core\REST\TemplateController($template_service, $logger);
+        $template_controller->register_routes();
+        
+    } catch (\Exception $e) {
+        if (isset($logger)) {
+            $logger->error('REST API initialization error', ['error' => $e->getMessage()]);
+        } else {
+            error_log('DigiContent REST API Error: ' . $e->getMessage());
+        }
     }
 });
