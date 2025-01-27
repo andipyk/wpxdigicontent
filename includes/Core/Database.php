@@ -18,7 +18,7 @@ final class Database {
             'name' => 'varchar(255) NOT NULL',
             'category' => 'varchar(50) NOT NULL',
             'prompt' => 'text NOT NULL',
-            'variables' => 'text DEFAULT NULL',
+            'variables' => 'text DEFAULT NULL CHECK (variables IS NULL OR JSON_VALID(variables))',
             'created_at' => 'datetime NOT NULL DEFAULT CURRENT_TIMESTAMP',
             'updated_at' => 'datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
             'PRIMARY KEY' => '(id)',
@@ -26,7 +26,7 @@ final class Database {
         ],
         'logs' => [
             'id' => 'bigint(20) unsigned NOT NULL AUTO_INCREMENT',
-            'level' => 'varchar(20) NOT NULL',
+            'level' => "enum('info','error','debug') NOT NULL DEFAULT 'info'",
             'message' => 'text NOT NULL',
             'context' => 'text DEFAULT NULL',
             'created_at' => 'datetime NOT NULL DEFAULT CURRENT_TIMESTAMP',
@@ -70,20 +70,28 @@ final class Database {
     public function create_tables(): void 
     {
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        
+        $this->wpdb->query('START TRANSACTION');
+        try {
+            foreach (self::TABLES as $table => $columns) {
+                $table_name = $this->get_table_name($table);
+                $sql = $this->build_create_table_sql($table_name, $columns);
 
-        foreach (self::TABLES as $table => $columns) {
-            $table_name = $this->get_table_name($table);
-            $sql = $this->build_create_table_sql($table_name, $columns);
+                if (!$this->execute_table_creation($sql)) {
+                    $this->wpdb->query('ROLLBACK');
+                    throw new \RuntimeException(
+                        sprintf('Failed to create table: %s', $table_name)
+                    );
+                }
 
-            if (!$this->execute_table_creation($sql)) {
-                throw new \RuntimeException(
-                    sprintf('Failed to create table: %s', $table_name)
+                $this->logger->info(
+                    sprintf('Created table: %s', $table_name)
                 );
             }
-
-            $this->logger->info(
-                sprintf('Created table: %s', $table_name)
-            );
+            $this->wpdb->query('COMMIT');
+        } catch (\Exception $e) {
+            $this->wpdb->query('ROLLBACK');
+            throw $e;
         }
     }
 
@@ -279,10 +287,11 @@ final class Database {
         global $wpdb;
         
         try {
-            $tables = [
-                $this->get_table_name('templates'),
-                $this->get_table_name('logs')
-            ];
+            $required_tables = ['templates', 'logs'];
+            $tables = array_map(
+                fn($table) => $this->get_table_name($table),
+                array_intersect($required_tables, array_keys(self::TABLES))
+            );
             
             foreach ($tables as $table) {
                 $exists = $wpdb->get_var("SHOW TABLES LIKE '$table'");

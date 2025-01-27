@@ -67,6 +67,17 @@ final class Settings {
      */
     private function register_debug_settings(): void 
     {
+        // Add nonce field to debug settings
+        add_settings_field(
+            'digicontent_debug_nonce',
+            '',
+            function() {
+                wp_nonce_field('digicontent_debug_settings', 'digicontent_debug_nonce');
+            },
+            'digicontent_debug_settings',
+            'digicontent_debug_section'
+        );
+
         register_setting(
             'digicontent_debug_settings',
             'digicontent_debug_enabled',
@@ -74,6 +85,18 @@ final class Settings {
                 'type' => 'boolean',
                 'default' => false,
                 'sanitize_callback' => 'rest_sanitize_boolean',
+                'validate_callback' => function($value) {
+                    if (!isset($_POST['digicontent_debug_nonce']) || 
+                        !wp_verify_nonce($_POST['digicontent_debug_nonce'], 'digicontent_debug_settings')) {
+                        add_settings_error(
+                            'digicontent_debug_settings',
+                            'invalid_nonce',
+                            __('Security check failed. Please try again.', 'digicontent')
+                        );
+                        return get_option('digicontent_debug_enabled');
+                    }
+                    return $value;
+                },
             ]
         );
 
@@ -224,7 +247,7 @@ final class Settings {
      */
     private function get_template_categories(): array 
     {
-        return [
+        $default_categories = [
             'blog_post' => __('Blog Post', 'digicontent'),
             'product_description' => __('Product Description', 'digicontent'),
             'news_article' => __('News Article', 'digicontent'),
@@ -232,6 +255,8 @@ final class Settings {
             'email' => __('Email Template', 'digicontent'),
             'seo' => __('SEO Content', 'digicontent'),
         ];
+        
+        return apply_filters('digicontent_template_categories', $default_categories);
     }
 
     /**
@@ -380,6 +405,30 @@ final class Settings {
      * @return string The encrypted API key or empty string on failure.
      */
     public function encrypt_api_key($value): string {
+        if (empty($value)) {
+            return '';
+        }
+
+        // Validate Anthropic key format (starts with 'sk-ant-')
+        if (strpos($value, 'digicontent_anthropic_key') !== false && !preg_match('/^sk-ant-[a-zA-Z0-9]{48}$/', $value)) {
+            add_settings_error(
+                'digicontent_api_settings',
+                'invalid_key_format',
+                __('Invalid Anthropic API key format. Key should start with "sk-ant-".', 'digicontent')
+            );
+            return '';
+        }
+
+        // Validate OpenAI key format (starts with 'sk-')
+        if (strpos($value, 'digicontent_openai_key') !== false && !preg_match('/^sk-[a-zA-Z0-9]{48}$/', $value)) {
+            add_settings_error(
+                'digicontent_api_settings',
+                'invalid_key_format',
+                __('Invalid OpenAI API key format. Key should start with "sk-".', 'digicontent')
+            );
+            return '';
+        }
+
         $encrypted = $this->encryption->encrypt($value);
         if ($encrypted === '' && !empty($value)) {
             $this->logger->error('API key encryption failed');

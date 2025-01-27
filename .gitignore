@@ -52,6 +52,7 @@ ehthumbs_vista.db
 *.code-workspace
 .history/
 rules.md
+fix.md
 
 # Node - For frontend assets
 node_modules/
