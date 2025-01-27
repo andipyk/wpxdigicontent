@@ -1,4 +1,9 @@
 <?php defined('ABSPATH') || exit; ?>
+<?php
+if (!current_user_can('manage_options')) {
+    wp_die(__('You do not have sufficient permissions to access this page.', 'digicontent'));
+}
+?>
 
 <div class="wrap digicontent-settings-wrap">
     <h1><?php esc_html_e('DigiContent Settings', 'digicontent'); ?></h1>
