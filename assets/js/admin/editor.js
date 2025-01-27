@@ -120,11 +120,11 @@ class DigiContentEditor {
 
     try {
       this.setGeneratingState(true);
-      const response = this.generateContent(
+      const response = await this.generateContent(
         prompt,
         this.modelSelect.value
       );
-      this.handleGenerateResponse(response);
+      await this.handleGenerateResponse(response);
     } catch (error) {
       this.handleError(error, "Generation error");
     } finally {
