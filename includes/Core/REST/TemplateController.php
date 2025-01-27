@@ -39,6 +39,7 @@ class TemplateController {
                     'category' => [
                         'required' => true,
                         'type' => 'string',
+                        'sanitize_callback' => 'sanitize_text_field',
                     ],
                     'prompt' => [
                         'required' => true,
