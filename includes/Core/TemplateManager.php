@@ -15,6 +15,7 @@ class TemplateManager {
     ];
     private const CACHE_EXPIRATION = 3600; // 1 hour in seconds
     private const MAX_VERSIONS = 5;
+    private const TEMPLATE_OPTION_KEY = 'digicontent_templates';
 
     public function __construct($template_repository) {
         $this->template_repository = $template_repository;

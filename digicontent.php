@@ -54,12 +54,13 @@ add_action('plugins_loaded', function () {
     try {
         // Initialize services
         $logger = new DigiContent\Core\Services\LoggerService();
+        $encryption = new DigiContent\Core\Services\EncryptionService($logger);
         $database = new DigiContent\Core\Database($logger);
         $template_repository = new DigiContent\Core\Repository\TemplateRepository($database);
         $template_service = new DigiContent\Core\Services\TemplateService($template_repository, $logger);
         
         // Initialize plugin components with services
-        new DigiContent\Admin\Settings($template_service, $logger);
+        new DigiContent\Admin\Settings($template_service, $logger, $encryption);
         new DigiContent\Admin\Editor($template_service, $logger);
         
         // Load text domain

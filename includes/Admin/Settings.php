@@ -6,6 +6,7 @@ namespace DigiContent\Admin;
 
 use DigiContent\Core\Services\TemplateService;
 use DigiContent\Core\Services\LoggerService;
+use DigiContent\Core\Services\EncryptionService;
 
 /**
  * Handles plugin settings and admin interface.
@@ -19,16 +20,19 @@ final class Settings {
     private string $menu_slug  = 'digicontent-settings';
     private TemplateService $template_service;
     private LoggerService $logger;
+    private EncryptionService $encryption;
 
     /**
      * Initialize settings page and register hooks.
      */
     public function __construct(
         TemplateService $template_service,
-        LoggerService $logger
+        LoggerService $logger,
+        EncryptionService $encryption
     ) {
         $this->template_service = $template_service;
         $this->logger = $logger;
+        $this->encryption = $encryption;
         
         add_action('admin_menu', [$this, 'add_settings_page']);
         add_action('admin_init', [$this, 'register_settings']);
@@ -152,6 +156,9 @@ final class Settings {
         try {
             $templates = $this->template_service->getTemplates();
             $categories = $this->get_template_categories();
+            
+            $anthropic_key = $this->get_decrypted_key('digicontent_anthropic_key');
+            $openai_key = $this->get_decrypted_key('digicontent_openai_key');
             
             include dirname(__FILE__) . '/views/template-form.php';
         } catch (\Exception $e) {
@@ -281,7 +288,7 @@ final class Settings {
         
         if (!empty($encrypted_value)) {
             try {
-                $value = \DigiContent\Core\Encryption::decrypt($encrypted_value);
+                $value = $this->get_decrypted_key($field_id);
             } catch (\Exception $e) {
                 $this->logger->error('Failed to decrypt API key', ['error' => $e->getMessage()]);
             }
@@ -369,17 +376,18 @@ final class Settings {
      */
     public function encrypt_api_key($value): string 
     {
-        if ($value === null || $value === '') {
-            return '';
-        }
+        return $this->encryption->encrypt($value);
+    }
 
-        $value = (string) $value;
-
-        try {
-            return \DigiContent\Core\Encryption::encrypt($value);
-        } catch (\Exception $e) {
-            $this->logger->error('Failed to encrypt API key', ['error' => $e->getMessage()]);
-            return '';
-        }
+    /**
+     * Decrypts API key from database.
+     *
+     * @param string $option_name The option name.
+     * @return string The decrypted API key.
+     */
+    public function get_decrypted_key(string $option_name): string 
+    {
+        $encrypted = get_option($option_name, '');
+        return $this->encryption->decrypt($encrypted);
     }
 }
