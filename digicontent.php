@@ -2,15 +2,16 @@
 /**
  * Plugin Name: DigiContent
  * Plugin URI: https://digikuy.com/digicontent
- * Description: AI-powered content generation plugin using Anthropic Claude 3.5 Sonnet and OpenAI GPT-4 Turbo
+ * Description: AI-powered content generation using OpenAI GPT-4 and Anthropic Claude
  * Version: 1.1.0
+ * Requires at least: 6.0
+ * Requires PHP: 8.0
  * Author: Andi Syafrianda
  * Author URI: https://digikuy.com
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: digicontent
  * Domain Path: /languages
- * Requires PHP: 8.0
  */
 
 declare(strict_types=1);
@@ -73,6 +74,29 @@ add_action('plugins_loaded', function () {
             error_log('DigiContent Plugin Error: ' . $e->getMessage());
         }
     }
+});
+
+// Add privacy policy section
+add_action('admin_init', function() {
+    if (function_exists('wp_add_privacy_policy_content')) {
+        wp_add_privacy_policy_content(
+            'DigiContent',
+            sprintf(
+                __('DigiContent uses OpenAI and Anthropic APIs for content generation. Content prompts are sent to these services. For details, see %sOpenAI Privacy Policy%s and %sAnthropic Privacy Policy%s.', 'digicontent'),
+                '<a href="https://openai.com/privacy">',
+                '</a>',
+                '<a href="https://anthropic.com/privacy">',
+                '</a>'
+            )
+        );
+    }
+});
+
+// Add settings link to plugins page
+add_filter('plugin_action_links_' . plugin_basename(__FILE__), function($links) {
+    $settings_link = '<a href="options-general.php?page=digicontent-settings">' . __('Settings', 'digicontent') . '</a>';
+    array_unshift($links, $settings_link);
+    return $links;
 });
 
 // Activation hook
