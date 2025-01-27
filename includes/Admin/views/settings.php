@@ -1,83 +1,101 @@
-<?php defined('ABSPATH') || exit; ?>
 <?php
-if (!current_user_can('manage_options')) {
-    wp_die(__('You do not have sufficient permissions to access this page.', 'digicontent'));
+if (!defined('ABSPATH')) {
+    exit;
 }
 ?>
 
-<div class="wrap digicontent-settings-wrap">
-    <h1><?php esc_html_e('DigiContent Settings', 'digicontent'); ?></h1>
+<div class="wrap">
+    <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
     
-    <div class="digicontent-api-settings">
-        <h2><?php esc_html_e('API Settings', 'digicontent'); ?></h2>
-        <p class="description"><?php esc_html_e('Enter your API keys for AI content generation services.', 'digicontent'); ?></p>
+    <?php settings_errors(); ?>
+    
+    <div class="digicontent-settings">
+        <div class="digicontent-settings-section">
+            <h2><?php echo esc_html__('Content Templates', 'digicontent'); ?></h2>
+            
+            <?php if (!empty($templates)): ?>
+                <table class="wp-list-table widefat fixed striped">
+                    <thead>
+                        <tr>
+                            <th><?php echo esc_html__('Name', 'digicontent'); ?></th>
+                            <th><?php echo esc_html__('Category', 'digicontent'); ?></th>
+                            <th><?php echo esc_html__('Actions', 'digicontent'); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($templates as $template): ?>
+                            <tr>
+                                <td><?php echo esc_html($template->name); ?></td>
+                                <td><?php echo esc_html($template->category); ?></td>
+                                <td>
+                                    <button class="button edit-template" 
+                                            data-id="<?php echo esc_attr($template->id); ?>"
+                                            data-name="<?php echo esc_attr($template->name); ?>"
+                                            data-category="<?php echo esc_attr($template->category); ?>"
+                                            data-prompt="<?php echo esc_attr($template->prompt); ?>">
+                                        <?php echo esc_html__('Edit', 'digicontent'); ?>
+                                    </button>
+                                    <button class="button delete-template" 
+                                            data-id="<?php echo esc_attr($template->id); ?>">
+                                        <?php echo esc_html__('Delete', 'digicontent'); ?>
+                                    </button>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php else: ?>
+                <p><?php echo esc_html__('No templates found.', 'digicontent'); ?></p>
+            <?php endif; ?>
+
+            <button class="button button-primary add-template">
+                <?php echo esc_html__('Add New Template', 'digicontent'); ?>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Template Form Modal -->
+<div id="template-modal" class="digicontent-modal" style="display: none;">
+    <div class="digicontent-modal-content">
+        <span class="close">&times;</span>
+        <h2 id="modal-title"><?php echo esc_html__('Add New Template', 'digicontent'); ?></h2>
         
-        <form method="post" action="options.php">
-            <?php settings_fields('digicontent_api_settings'); ?>
+        <form id="template-form">
+            <input type="hidden" id="template-id" name="id" value="">
             
-            <table class="form-table">
-                <tr>
-                    <th scope="row">
-                        <label for="digicontent_anthropic_key">
-                            <?php esc_html_e('Anthropic API Key', 'digicontent'); ?>
-                            <span class="tooltip-wrap">
-                                <span class="dashicons dashicons-editor-help tooltip-icon"></span>
-                                <span class="tooltip-content">
-                                    <?php esc_html_e('Enter your Anthropic API key to use Claude AI for content generation. You can obtain this from Anthropic\'s API key settings.', 'digicontent'); ?>
-                                </span>
-                            </span>
-                        </label>
-                    </th>
-                    <td>
-                        <input type="password" 
-                            id="digicontent_anthropic_key" 
-                            name="digicontent_anthropic_key" 
-                            class="regular-text"
-                            value="<?php echo esc_attr(get_option('digicontent_anthropic_key')); ?>"
-                            autocomplete="new-password"
-                        >
-                        <p class="description">
-                            <?php printf(
-                                /* translators: %s: URL to Anthropic's API key settings */
-                                esc_html__('Get your API key from %s', 'digicontent'),
-                                '<a href="https://console.anthropic.com/account/keys" target="_blank">Anthropic Console</a>'
-                            ); ?>
-                        </p>
-                    </td>
-                </tr>
-                
-                <tr>
-                    <th scope="row">
-                        <label for="digicontent_openai_key">
-                            <?php esc_html_e('OpenAI API Key', 'digicontent'); ?>
-                            <span class="tooltip-wrap">
-                                <span class="dashicons dashicons-editor-help tooltip-icon"></span>
-                                <span class="tooltip-content">
-                                    <?php esc_html_e('Enter your OpenAI API key to use GPT-4 for content generation. You can obtain this from OpenAI\'s API key settings.', 'digicontent'); ?>
-                                </span>
-                            </span>
-                        </label>
-                    </th>
-                    <td>
-                        <input type="password" 
-                            id="digicontent_openai_key" 
-                            name="digicontent_openai_key" 
-                            class="regular-text"
-                            value="<?php echo esc_attr(get_option('digicontent_openai_key')); ?>"
-                            autocomplete="new-password"
-                        >
-                        <p class="description">
-                            <?php printf(
-                                /* translators: %s: URL to OpenAI's API key settings */
-                                esc_html__('Get your API key from %s', 'digicontent'),
-                                '<a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Dashboard</a>'
-                            ); ?>
-                        </p>
-                    </td>
-                </tr>
-            </table>
+            <div class="form-field">
+                <label for="template-name"><?php echo esc_html__('Template Name', 'digicontent'); ?></label>
+                <input type="text" id="template-name" name="name" required>
+            </div>
             
-            <?php submit_button(__('Save API Settings', 'digicontent')); ?>
+            <div class="form-field">
+                <label for="template-category"><?php echo esc_html__('Category', 'digicontent'); ?></label>
+                <select id="template-category" name="category" required>
+                    <?php foreach ($categories as $value => $label): ?>
+                        <option value="<?php echo esc_attr($value); ?>">
+                            <?php echo esc_html($label); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
+            <div class="form-field">
+                <label for="template-prompt"><?php echo esc_html__('Prompt Template', 'digicontent'); ?></label>
+                <textarea id="template-prompt" name="prompt" required></textarea>
+                <p class="description">
+                    <?php echo esc_html__('Use ((variable_name)) syntax for variables that will be replaced with user input.', 'digicontent'); ?>
+                </p>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="button button-primary">
+                    <?php echo esc_html__('Save Template', 'digicontent'); ?>
+                </button>
+                <button type="button" class="button cancel-template">
+                    <?php echo esc_html__('Cancel', 'digicontent'); ?>
+                </button>
+            </div>
         </form>
     </div>
 </div> 

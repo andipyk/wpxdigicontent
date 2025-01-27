@@ -63,51 +63,91 @@ final class Database {
     }
 
     /**
-     * Create plugin database tables.
-     *
-     * @throws \RuntimeException If table creation fails.
+     * Create database tables.
      */
     public function create_tables(): void 
     {
+        global $wpdb;
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-        
-        $this->wpdb->query('START TRANSACTION');
+
         try {
-            foreach (self::TABLES as $table => $columns) {
+            $wpdb->query('START TRANSACTION');
+
+            foreach (self::TABLES as $table => $schema) {
                 $table_name = $this->get_table_name($table);
-                $sql = $this->build_create_table_sql($table_name, $columns);
-
-                if (!$this->execute_table_creation($sql)) {
-                    $this->wpdb->query('ROLLBACK');
-                    throw new \RuntimeException(
-                        sprintf('Failed to create table: %s', $table_name)
-                    );
+                $columns = [];
+                
+                foreach ($schema as $column => $definition) {
+                    if (in_array($column, ['PRIMARY KEY', 'KEY', 'UNIQUE KEY'])) {
+                        $columns[] = "$column $definition";
+                    } else {
+                        $columns[] = "`$column` $definition";
+                    }
                 }
-
-                $this->logger->info(
-                    sprintf('Created table: %s', $table_name)
+                
+                $sql = sprintf(
+                    "CREATE TABLE IF NOT EXISTS `%s` (\n%s\n) %s",
+                    $table_name,
+                    implode(",\n", $columns),
+                    $this->charset_collate
                 );
+
+                dbDelta($sql);
+
+                if (!$this->table_exists($table_name)) {
+                    throw new \RuntimeException(sprintf('Failed to create table: %s', $table_name));
+                }
             }
-            $this->wpdb->query('COMMIT');
+
+            $wpdb->query('COMMIT');
+            $this->logger->info('Database tables created successfully');
+
         } catch (\Exception $e) {
-            $this->wpdb->query('ROLLBACK');
+            $wpdb->query('ROLLBACK');
+            $this->logger->error('Failed to create database tables', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
 
     /**
-     * Drop plugin database tables.
+     * Check if a table exists.
+     *
+     * @param string $table_name Full table name
+     * @return bool Whether table exists
+     */
+    private function table_exists(string $table_name): bool 
+    {
+        global $wpdb;
+        $sql = sprintf(
+            "SHOW TABLES LIKE '%s'",
+            $wpdb->_real_escape($table_name)
+        );
+        return (bool) $wpdb->get_var($sql);
+    }
+
+    /**
+     * Drop database tables.
      */
     public function drop_tables(): void 
     {
-        foreach (array_keys(self::TABLES) as $table) {
-            $table_name = $this->get_table_name($table);
-            
-            $this->wpdb->query("DROP TABLE IF EXISTS {$table_name}");
-            
-            $this->logger->info(
-                sprintf('Dropped table: %s', $table_name)
-            );
+        global $wpdb;
+
+        try {
+            $wpdb->query('START TRANSACTION');
+
+            foreach (array_keys(self::TABLES) as $table) {
+                $table_name = $this->get_table_name($table);
+                $sql = $wpdb->prepare("DROP TABLE IF EXISTS %i", $table_name);
+                $wpdb->query($sql);
+            }
+
+            $wpdb->query('COMMIT');
+            $this->logger->info('Database tables dropped successfully');
+
+        } catch (\Exception $e) {
+            $wpdb->query('ROLLBACK');
+            $this->logger->error('Failed to drop database tables', ['error' => $e->getMessage()]);
+            throw $e;
         }
     }
 
@@ -120,78 +160,6 @@ final class Database {
     public function get_table_name(string $table): string 
     {
         return $this->table_prefix . $table;
-    }
-
-    /**
-     * Check if a table exists.
-     *
-     * @param string $table Base table name.
-     * @return bool True if table exists, false otherwise.
-     */
-    public function table_exists(string $table): bool 
-    {
-        $table_name = $this->get_table_name($table);
-        $result = $this->wpdb->get_var(
-            $this->wpdb->prepare(
-                'SHOW TABLES LIKE %s',
-                $table_name
-            )
-        );
-
-        return $result === $table_name;
-    }
-
-    /**
-     * Build CREATE TABLE SQL statement.
-     *
-     * @param string $table_name Full table name.
-     * @param array<string, string> $columns Table columns and their definitions.
-     * @return string SQL statement.
-     */
-    private function build_create_table_sql(string $table_name, array $columns): string 
-    {
-        $sql = "CREATE TABLE {$table_name} (\n";
-        
-        foreach ($columns as $column => $definition) {
-            if (in_array($column, ['PRIMARY KEY', 'UNIQUE KEY', 'KEY'], true)) {
-                $sql .= "\t{$column} {$definition},\n";
-            } else {
-                $sql .= "\t{$column} {$definition},\n";
-            }
-        }
-        
-        $sql = rtrim($sql, ",\n");
-        $sql .= "\n) {$this->charset_collate};";
-        
-        return $sql;
-    }
-
-    /**
-     * Execute table creation SQL.
-     *
-     * @param string $sql CREATE TABLE SQL statement.
-     * @return bool True on success, false on failure.
-     */
-    private function execute_table_creation(string $sql): bool 
-    {
-        $result = dbDelta($sql);
-        
-        if (empty($result)) {
-            return false;
-        }
-
-        foreach ($result as $table => $message) {
-            if (str_contains($message, 'Created table')) {
-                $this->logger->info($message);
-            } elseif (str_contains($message, 'Modified table')) {
-                $this->logger->info($message);
-            } else {
-                $this->logger->error($message);
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /**
@@ -230,6 +198,13 @@ final class Database {
      * @return array Array of log entries
      */
     public function get_logs($args = []) {
+        $cache_key = 'digicontent_logs_' . md5(serialize($args));
+        $cached = wp_cache_get($cache_key);
+        
+        if (false !== $cached) {
+            return $cached;
+        }
+
         $defaults = [
             'level' => '',
             'limit' => 50,
@@ -240,18 +215,37 @@ final class Database {
 
         $args = wp_parse_args($args, $defaults);
         $where = '';
+        $query_args = [];
+
+        // Validate and sanitize orderby
+        $allowed_orderby = ['created_at', 'level', 'message'];
+        $args['orderby'] = in_array($args['orderby'], $allowed_orderby) ? $args['orderby'] : 'created_at';
+        
+        // Validate and sanitize order
+        $args['order'] = in_array(strtoupper($args['order']), ['ASC', 'DESC']) ? strtoupper($args['order']) : 'DESC';
 
         if (!empty($args['level'])) {
-            $where = $this->wpdb->prepare(' WHERE level = %s', $args['level']);
+            $where = ' WHERE level = %s';
+            $query_args[] = $args['level'];
         }
 
-        $sql = "SELECT * FROM {$this->get_table_name('logs')}{$where}
-                ORDER BY {$args['orderby']} {$args['order']}
-                LIMIT %d OFFSET %d";
+        $query_args[] = (int) $args['limit'];
+        $query_args[] = (int) $args['offset'];
 
-        return $this->wpdb->get_results(
-            $this->wpdb->prepare($sql, $args['limit'], $args['offset'])
+        $table_name = $this->get_table_name('logs');
+        $sql = $this->wpdb->prepare(
+            "SELECT * FROM {$table_name}{$where} ORDER BY {$args['orderby']} {$args['order']} LIMIT %d OFFSET %d",
+            ...$query_args
         );
+
+        $logs = $this->wpdb->get_results($sql);
+        
+        foreach ($logs as $log) {
+            $log->context = maybe_unserialize($log->context);
+        }
+
+        wp_cache_set($cache_key, $logs, '', 300); // Cache for 5 minutes
+        return $logs;
     }
 
     /**
@@ -260,22 +254,28 @@ final class Database {
      * @param string $level Optional log level to clear
      * @return bool|int False on failure, number of rows affected on success
      */
-    public function clear_logs($level = '') {
+    public function clear_logs($level = ''): bool|int {
+        $table_name = $this->get_table_name('logs');
         $where = '';
-        $where_values = [];
+        $query_args = [];
 
         if (!empty($level)) {
             $where = ' WHERE level = %s';
-            $where_values[] = $level;
+            $query_args[] = $level;
         }
 
-        $sql = "DELETE FROM {$this->get_table_name('logs')}{$where}";
+        $sql = $this->wpdb->prepare(
+            "DELETE FROM {$table_name}{$where}",
+            ...$query_args
+        );
 
-        if (!empty($where_values)) {
-            $sql = $this->wpdb->prepare($sql, ...$where_values);
+        $result = $this->wpdb->query($sql);
+        
+        if ($result !== false) {
+            wp_cache_delete('digicontent_logs');
         }
-
-        return $this->wpdb->query($sql);
+        
+        return $result;
     }
 
     /**
@@ -284,28 +284,25 @@ final class Database {
      * @return bool True if all required tables exist, false otherwise
      */
     public function check_tables_exist(): bool {
-        global $wpdb;
-        
         try {
-            $required_tables = ['templates', 'logs'];
-            $tables = array_map(
-                fn($table) => $this->get_table_name($table),
-                array_intersect($required_tables, array_keys(self::TABLES))
-            );
-            
-            foreach ($tables as $table) {
-                $exists = $wpdb->get_var("SHOW TABLES LIKE '$table'");
-                if (!$exists) {
-                    $this->logger->error('Required table missing', ['table' => $table]);
+            global $wpdb;
+            foreach (self::TABLES as $table => $schema) {
+                $table_name = $wpdb->prefix . $table;
+                $sql = $wpdb->prepare("SHOW TABLES LIKE %s", $table_name);
+                if (!$wpdb->get_var($sql)) {
+                    $this->logger->error('Required table does not exist', ['table' => $table_name]);
                     return false;
                 }
             }
-            
             return true;
-            
         } catch (\Exception $e) {
             $this->logger->error('Error checking tables', ['error' => $e->getMessage()]);
             return false;
         }
+    }
+
+    protected function drop_table(string $table_name): void {
+        $sql = $this->wpdb->prepare("DROP TABLE IF EXISTS %i", $table_name);
+        $this->wpdb->query($sql);
     }
 }

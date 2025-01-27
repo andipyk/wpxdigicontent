@@ -1,8 +1,11 @@
 /**
  * DigiContent Admin Styles
+ * Version: 1.1.0
  */
 
-/* Common Layout */
+/* -----------------------------
+ * Layout & Common Components
+ * --------------------------- */
 .digicontent-wrap,
 .digicontent-settings-wrap {
     margin: 20px 0;
@@ -30,178 +33,9 @@
     font-weight: 600;
 }
 
-/* Form Elements */
-.digicontent-api-field {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.description {
-    margin-top: 8px;
-    color: #595959;
-    font-size: 13px;
-}
-
-/* Tooltips */
-.tooltip {
-    position: relative;
-    cursor: help;
-}
-
-.tooltip-icon {
-    color: #595959;
-    cursor: help;
-    margin-left: 5px;
-    vertical-align: middle;
-}
-
-.tooltip-content {
-    display: none;
-    position: absolute;
-    left: 30px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: #1d2327;
-    color: #fff;
-    padding: 8px 12px;
-    border-radius: 4px;
-    font-size: 12px;
-    width: 250px;
-    z-index: 100;
-}
-
-.tooltip:hover .tooltip-content {
-    display: block;
-}
-
-/* Variable Fields */
-.variable-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.variable-chip {
-    background: #e9ecef;
-    padding: 5px 10px;
-    border-radius: 15px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: background-color 0.2s;
-}
-
-.variable-chip:hover,
-.variable-chip:focus {
-    background: #f6f7f7;
-    border-color: #8c8f94;
-    outline: 2px solid #2271b1;
-    outline-offset: 1px;
-}
-
-.variable-highlight {
-    background: #e9ecef;
-    padding: 2px 5px;
-    border-radius: 3px;
-}
-
-/* Debug Settings */
-.digicontent-debug-settings {
-    margin-bottom: 20px;
-}
-
-.digicontent-debug-settings .submit {
-    margin-top: 15px;
-    padding: 0;
-}
-
-/* Switch Toggle */
-.switch,
-.toggle-switch {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    cursor: pointer;
-    padding: 5px 0;
-}
-
-.switch input,
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.slider {
-    position: relative;
-    display: inline-block;
-    width: 40px;
-    height: 20px;
-    background-color: #ccc;
-    margin-right: 10px;
-    transition: .4s;
-}
-
-.slider.round {
-    border-radius: 20px;
-}
-
-.slider.round:before {
-    border-radius: 50%;
-}
-
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 16px;
-    width: 16px;
-    left: 2px;
-    bottom: 2px;
-    background-color: white;
-    transition: .4s;
-}
-
-input:checked + .slider {
-    background-color: #2271b1;
-}
-
-input:checked + .slider:before {
-    transform: translateX(20px);
-}
-
-/* Notifications */
-#template-notice {
-    margin: 15px 0;
-    padding: 10px 15px;
-    border-left-width: 4px;
-}
-
-.notice-success {
-    border-left-color: #46b450;
-}
-
-.notice-error {
-    border-left-color: #dc3232;
-}
-
-/* Editor Layout */
-.digicontent-editor-wrapper {
-    max-width: 800px;
-    margin: 20px auto;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 25px;
-}
-
-.digicontent-editor {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
+/* -----------------------------
+ * Form Elements
+ * --------------------------- */
 .digicontent-field {
     margin-bottom: 20px;
 }
@@ -214,7 +48,8 @@ input:checked + .slider:before {
 }
 
 .digicontent-field select,
-.digicontent-field textarea {
+.digicontent-field textarea,
+.digicontent-field input[type="text"] {
     width: 100%;
     padding: 10px;
     border: 1px solid #ccd0d4;
@@ -225,13 +60,75 @@ input:checked + .slider:before {
 }
 
 .digicontent-field select:focus,
-.digicontent-field textarea:focus {
+.digicontent-field textarea:focus,
+.digicontent-field input[type="text"]:focus {
     border-color: #2271b1;
     box-shadow: 0 0 0 1px #2271b1;
     outline: none;
 }
 
-/* Template Variables Section */
+.description {
+    margin-top: 8px;
+    color: #646970;
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* -----------------------------
+ * API Settings
+ * --------------------------- */
+.digicontent-api-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.digicontent-api-settings .submit {
+    margin-top: 15px;
+    padding: 0;
+}
+
+/* -----------------------------
+ * Debug Settings
+ * --------------------------- */
+.digicontent-debug-settings {
+    margin-bottom: 20px;
+}
+
+.digicontent-debug-settings .submit {
+    margin-top: 15px;
+    padding: 0;
+}
+
+/* -----------------------------
+ * Template Management
+ * --------------------------- */
+.digicontent-templates-list {
+    margin-bottom: 30px;
+}
+
+.digicontent-template-form {
+    background: #f9f9f9;
+    padding: 20px;
+    border: 1px solid #e5e5e5;
+    margin-top: 20px;
+}
+
+.prompt-template-wrapper {
+    margin: 15px 0;
+}
+
+.prompt-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+/* -----------------------------
+ * Variable Fields
+ * --------------------------- */
 #template-variables {
     background: #f8f9fa;
     padding: 20px;
@@ -280,76 +177,123 @@ input:checked + .slider:before {
     outline: none;
 }
 
-/* Toggle Switch */
-.toggle-switch {
+.variable-list {
     display: flex;
-    align-items: center;
-    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.variable-chip {
+    background: #e9ecef;
+    padding: 5px 10px;
+    border-radius: 15px;
     cursor: pointer;
-}
-
-.toggle-switch input {
-    display: none;
-}
-
-.toggle-switch .slider {
-    position: relative;
-    width: 44px;
-    height: 22px;
-    background-color: #ccd0d4;
-    margin-right: 10px;
-    border-radius: 22px;
+    font-size: 12px;
     transition: background-color 0.2s;
 }
 
-.toggle-switch .slider:before {
-    content: '';
-    position: absolute;
-    width: 18px;
-    height: 18px;
-    background-color: white;
-    border-radius: 50%;
-    top: 2px;
-    left: 2px;
-    transition: transform 0.2s;
+.variable-chip:hover,
+.variable-chip:focus {
+    background: #f6f7f7;
+    border-color: #8c8f94;
+    outline: 2px solid #2271b1;
+    outline-offset: 1px;
 }
 
-.toggle-switch input:checked + .slider {
+.variable-highlight {
+    background: #e9ecef;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+
+/* -----------------------------
+ * Tooltips
+ * --------------------------- */
+.tooltip {
+    position: relative;
+    cursor: help;
+}
+
+.tooltip-icon {
+    color: #595959;
+    cursor: help;
+    margin-left: 5px;
+    vertical-align: middle;
+}
+
+.tooltip-content {
+    display: none;
+    position: absolute;
+    left: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #1d2327;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    width: 250px;
+    z-index: 100;
+}
+
+.tooltip:hover .tooltip-content {
+    display: block;
+}
+
+/* -----------------------------
+ * Toggle Switch
+ * --------------------------- */
+.switch,
+.toggle-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 5px 0;
+}
+
+.switch input,
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+    background-color: #ccc;
+    margin-right: 10px;
+    transition: .4s;
+    border-radius: 20px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
     background-color: #2271b1;
 }
 
-.toggle-switch input:checked + .slider:before {
-    transform: translateX(22px);
+input:checked + .slider:before {
+    transform: translateX(20px);
 }
 
-/* Generate Button */
-#digicontent-generate {
-    background: #2271b1;
-    color: #fff;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 4px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    align-self: flex-start;
-}
-
-#digicontent-generate:hover {
-    background: #135e96;
-}
-
-#digicontent-generate:disabled {
-    background: #ccd0d4;
-    cursor: not-allowed;
-}
-
-/* Notifications */
-#digicontent-notifications {
-    margin-bottom: 20px;
-}
-
+/* -----------------------------
+ * Notifications
+ * --------------------------- */
 .notice {
     padding: 12px 15px;
     border-radius: 4px;
@@ -381,12 +325,28 @@ input:checked + .slider:before {
     color: #0a4b78;
 }
 
-/* Model Selection */
+/* -----------------------------
+ * Editor Components
+ * --------------------------- */
+.digicontent-editor-wrapper {
+    max-width: 800px;
+    margin: 20px auto;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 25px;
+}
+
+.digicontent-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
 #digicontent-model {
     max-width: 300px;
 }
 
-/* Prompt Areas */
 #digicontent-prompt,
 #digicontent-direct-prompt {
     min-height: 120px;
@@ -395,10 +355,51 @@ input:checked + .slider:before {
     resize: vertical;
 }
 
-/* Description Text */
-.description {
-    color: #646970;
-    font-size: 13px;
-    font-style: italic;
-    margin-top: 8px;
+/* -----------------------------
+ * Buttons
+ * --------------------------- */
+#digicontent-generate {
+    background: #2271b1;
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    align-self: flex-start;
+}
+
+#digicontent-generate:hover {
+    background: #135e96;
+}
+
+#digicontent-generate:disabled {
+    background: #ccd0d4;
+    cursor: not-allowed;
+}
+
+/* -----------------------------
+ * Media Queries
+ * --------------------------- */
+@media screen and (max-width: 782px) {
+    .digicontent-wrap,
+    .digicontent-settings-wrap {
+        margin: 10px;
+    }
+
+    .digicontent-editor-wrapper {
+        margin: 10px;
+        padding: 15px;
+    }
+
+    .variable-fields {
+        grid-template-columns: 1fr;
+    }
+
+    #digicontent-generate {
+        width: 100%;
+        align-self: stretch;
+    }
 }

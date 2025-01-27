@@ -1,96 +1,101 @@
+/**
+ * DigiContent Template Editor
+ * Handles template management functionality in the admin area
+ */
 'use strict';
 
 class TemplateEditor {
     constructor() {
+        // Initialize properties
+        this.form = document.getElementById('digicontent-new-template-form');
+        this.prompt = document.getElementById('template-prompt');
+        this.preview = document.querySelector('.variable-preview');
+        this.previewContent = document.querySelector('.preview-content');
+        this.noticeContainer = document.getElementById('template-notice');
+        
         this.init();
     }
 
     init() {
+        if (!this.form || !this.prompt) {
+            console.error('Required elements not found');
+            return;
+        }
+        
         this.bindEvents();
         this.initVariableAutocomplete();
     }
 
     bindEvents() {
+        // Variable buttons
         document.querySelectorAll('.insert-variable-button').forEach(btn => 
             btn.addEventListener('click', this.handleVariableButtonClick.bind(this)));
         
+        // Variable chips
         document.querySelectorAll('.variable-chip').forEach(chip => 
             chip.addEventListener('click', this.handleVariableChipClick.bind(this)));
         
-        const templatePrompt = document.getElementById('template-prompt');
-        if (templatePrompt) {
-            templatePrompt.addEventListener('input', this.handleTemplateInput.bind(this));
-        }
+        // Template prompt input
+        this.prompt?.addEventListener('input', this.handleTemplateInput.bind(this));
         
-        const templateForm = document.getElementById('digicontent-new-template-form');
-        if (templateForm) {
-            templateForm.addEventListener('submit', this.handleTemplateSubmit.bind(this));
-        }
+        // Form submission
+        this.form?.addEventListener('submit', this.handleTemplateSubmit.bind(this));
         
+        // Template deletion
         document.querySelectorAll('.delete-template').forEach(btn => 
             btn.addEventListener('click', this.handleTemplateDelete.bind(this)));
     }
 
     showNotification(message, type = 'success') {
-        const notice = document.getElementById('template-notice');
-        if (!notice) return;
+        if (!this.noticeContainer) return;
 
-        notice.className = `notice notice-${type}`;
-        const p = notice.querySelector('p') || document.createElement('p');
+        this.noticeContainer.className = `notice notice-${type}`;
+        const p = this.noticeContainer.querySelector('p') || document.createElement('p');
         p.textContent = message;
-        if (!p.parentNode) notice.appendChild(p);
+        
+        if (!p.parentNode) {
+            this.noticeContainer.appendChild(p);
+        }
 
-        notice.style.display = 'block';
+        this.noticeContainer.style.display = 'block';
         
         setTimeout(() => {
-            notice.style.display = 'none';
+            this.noticeContainer.style.display = 'none';
         }, 3000);
     }
 
     async handleTemplateSubmit(e) {
         e.preventDefault();
+        
         const form = e.target;
-        const submitButton = form.querySelector('button[type="submit"]');
-        const formData = {
-            name: document.getElementById('template-name').value.trim(),
-            category: document.getElementById('template-category').value,
-            prompt: document.getElementById('template-prompt').value.trim(),
-            variables: this.extractVariables(document.getElementById('template-prompt').value)
-        };
-
-        if (!formData.name || !formData.prompt) {
-            this.showNotification('Please fill in all required fields', 'error');
-            return;
-        }
-
+        const submitButton = form.querySelector('[type="submit"]');
+        
         try {
             submitButton.disabled = true;
-            submitButton.textContent = 'Saving...';
-
-            const response = await fetch(wpApiSettings.root + 'digicontent/v1/templates', {
+            
+            const formData = new FormData(form);
+            const response = await fetch(`${wpApiSettings.root}digicontent/v1/templates`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'X-WP-Nonce': wpApiSettings.nonce
                 },
-                body: JSON.stringify(formData)
+                body: formData
             });
 
-            const data = await response.json();
-            if (data && data.id) {
-                this.showNotification('Template saved successfully!');
-                form.reset();
-                document.querySelector('.variable-preview').style.display = 'none';
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                throw new Error('Invalid response from server');
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Error saving template');
             }
+            
+            this.showNotification('Template saved successfully!');
+            form.reset();
+            setTimeout(() => window.location.reload(), 1500);
+            
         } catch (error) {
-            const errorMessage = error.message || 'An error occurred while saving the template';
-            this.showNotification(errorMessage, 'error');
+            console.error('Template save error:', error);
+            this.showNotification(error.message || 'Error saving template', 'error');
         } finally {
             submitButton.disabled = false;
-            submitButton.textContent = 'Save Template';
         }
     }
 
@@ -98,7 +103,7 @@ class TemplateEditor {
         const button = e.target;
         const templateId = button.dataset.id;
 
-        if (!confirm('Are you sure you want to delete this template?')) {
+        if (!templateId || !confirm('Are you sure you want to delete this template?')) {
             return;
         }
 
@@ -112,13 +117,17 @@ class TemplateEditor {
                 }
             });
 
-            if (!response.ok) throw new Error('Error deleting template');
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Error deleting template');
+            }
             
             this.showNotification('Template deleted successfully!');
             setTimeout(() => window.location.reload(), 1500);
+            
         } catch (error) {
-            const errorMessage = error.message || 'Error deleting template';
-            this.showNotification(errorMessage, 'error');
+            console.error('Template delete error:', error);
+            this.showNotification(error.message || 'Error deleting template', 'error');
         } finally {
             button.disabled = false;
         }
@@ -126,114 +135,77 @@ class TemplateEditor {
 
     handleVariableButtonClick(e) {
         e.preventDefault();
+        
         const variables = ['topic', 'tone', 'length', 'style', 'keywords'];
-        const textarea = document.getElementById('template-prompt');
-        const pos = textarea.selectionStart;
-        const content = textarea.value;
+        const pos = this.prompt.selectionStart;
+        const content = this.prompt.value;
     
-        const dialog = this.createVariableDialog(variables, textarea, pos, content);
+        const dialog = this.createVariableDialog(variables, pos, content);
         document.body.appendChild(dialog);
     }
 
-    createVariableDialog(variables, textarea, pos, content) {
-        const dialog = document.createElement('div');
-        dialog.className = 'variable-dialog';
-        Object.assign(dialog.style, {
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            background: '#fff',
-            padding: '20px',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-            zIndex: '100000'
-        });
-    
-        const title = document.createElement('h3');
-        title.textContent = 'Insert Variable';
-        dialog.appendChild(title);
-    
-        variables.forEach(variable => {
-            const button = document.createElement('button');
-            button.className = 'button';
-            button.textContent = variable;
-            button.addEventListener('click', () => {
-                const insertion = ` ((${variable})) `;
-                textarea.value = content.slice(0, pos) + insertion + content.slice(pos);
-                dialog.remove();
-                textarea.focus();
-            });
-            dialog.appendChild(button);
-        });
-    
-        const closeBtn = document.createElement('button');
-        closeBtn.className = 'button';
-        closeBtn.textContent = '×';
-        Object.assign(closeBtn.style, {
-            position: 'absolute',
-            top: '10px',
-            right: '10px'
-        });
-        closeBtn.addEventListener('click', () => dialog.remove());
-        dialog.appendChild(closeBtn);
-    
-        return dialog;
-    }
-
     handleVariableChipClick(e) {
+        if (!this.prompt) return;
+        
         const variable = e.target.dataset.variable;
-        const textarea = document.getElementById('template-prompt');
-        const pos = textarea.selectionStart;
-        const content = textarea.value;
+        const pos = this.prompt.selectionStart;
+        const content = this.prompt.value;
         const insertion = `((${variable}))`;
-        textarea.value = content.slice(0, pos) + insertion + content.slice(pos);
-        textarea.focus();
+        
+        this.prompt.value = content.slice(0, pos) + insertion + content.slice(pos);
+        this.prompt.focus();
     }
 
     handleTemplateInput(e) {
+        if (!this.preview || !this.previewContent) return;
+        
         const content = e.target.value;
-        const preview = document.querySelector('.variable-preview');
-        const previewContent = document.querySelector('.preview-content');
         
         if (content.includes('((') && content.includes('))')) {
-            preview.style.display = 'block';
-            previewContent.innerHTML = content.replace(/\(\(([^)]+)\)\)/g, '<span class="variable-highlight">$1</span>');
+            this.preview.style.display = 'block';
+            this.previewContent.innerHTML = content.replace(
+                /\(\(([^)]+)\)\)/g, 
+                '<span class="variable-highlight">$1</span>'
+            );
         } else {
-            preview.style.display = 'none';
+            this.preview.style.display = 'none';
         }
     }
 
     initVariableAutocomplete() {
-        const textarea = document.getElementById('template-prompt');
-        if (!textarea) return;
+        if (!this.prompt) return;
 
-        textarea.addEventListener('keyup', (e) => {
+        this.prompt.addEventListener('keyup', (e) => {
             const pos = e.target.selectionStart;
             const content = e.target.value;
 
             if (content.slice(pos - 2, pos) === '((') {
-                this.showVariableSuggestions(textarea);
+                this.showVariableSuggestions();
             }
         });
     }
 
-    showVariableSuggestions(textarea) {
+    showVariableSuggestions() {
+        if (!this.prompt) return;
+        
         const variables = ['topic', 'tone', 'length', 'style', 'keywords'];
-        const pos = textarea.selectionStart;
-        const content = textarea.value;
+        const pos = this.prompt.selectionStart;
+        const content = this.prompt.value;
 
-        const dropdown = this.createVariableSuggestionsDropdown(variables, textarea, pos, content);
-        textarea.parentNode.appendChild(dropdown);
+        const dropdown = this.createVariableSuggestionsDropdown(variables, pos, content);
+        this.prompt.parentNode?.appendChild(dropdown);
 
-        document.addEventListener('click', function closeDropdown(e) {
+        const closeDropdown = (e) => {
             if (!dropdown.contains(e.target)) {
                 dropdown.remove();
                 document.removeEventListener('click', closeDropdown);
             }
-        });
+        };
+
+        document.addEventListener('click', closeDropdown);
     }
 
-    createVariableSuggestionsDropdown(variables, textarea, pos, content) {
+    createVariableSuggestionsDropdown(variables, pos, content) {
         const dropdown = document.createElement('div');
         dropdown.className = 'variable-suggestions';
 
@@ -241,15 +213,19 @@ class TemplateEditor {
             const item = document.createElement('div');
             item.className = 'suggestion-item';
             item.textContent = variable;
+            
             item.addEventListener('click', () => {
-                textarea.value = content.slice(0, pos) + variable + '))' + content.slice(pos);
+                if (!this.prompt) return;
+                
+                this.prompt.value = content.slice(0, pos) + variable + '))' + content.slice(pos);
                 dropdown.remove();
-                textarea.focus();
+                this.prompt.focus();
             });
+            
             dropdown.appendChild(item);
         });
 
-        const coords = this.getCaretCoordinates(textarea, pos);
+        const coords = this.getCaretCoordinates(pos);
         dropdown.style.top = (coords.top + 20) + 'px';
         dropdown.style.left = coords.left + 'px';
 
@@ -261,9 +237,12 @@ class TemplateEditor {
         return [...new Set(matches.map(match => match.replace(/[()]/g, '')))];    
     }
 
-    getCaretCoordinates(element, position) {
+    getCaretCoordinates(position) {
+        if (!this.prompt) return { top: 0, left: 0 };
+        
         const div = document.createElement('div');
-        const styles = getComputedStyle(element);
+        const styles = getComputedStyle(this.prompt);
+        
         const properties = [
             'direction', 'boxSizing', 'width', 'height', 'overflowX', 'overflowY',
             'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
@@ -275,24 +254,27 @@ class TemplateEditor {
 
         div.style.position = 'absolute';
         div.style.visibility = 'hidden';
+        
         properties.forEach(prop => div.style[prop] = styles[prop]);
-        div.textContent = element.value.substring(0, position);
+        div.textContent = this.prompt.value.substring(0, position);
 
         const span = document.createElement('span');
-        span.textContent = element.value.substring(position) || '.';
+        span.textContent = this.prompt.value.substring(position) || '.';
         div.appendChild(span);
 
         document.body.appendChild(div);
+        
         const coordinates = {
             top: span.offsetTop + parseInt(styles.borderTopWidth),
             left: span.offsetLeft + parseInt(styles.borderLeftWidth)
         };
+        
         div.remove();
-
         return coordinates;
     }
 }
 
+// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     new TemplateEditor();
 });

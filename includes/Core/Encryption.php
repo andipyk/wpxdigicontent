@@ -16,88 +16,120 @@ final class Encryption {
     private const HASH_ALGO = 'sha256';
     private const KEY_LENGTH = 32;
     private const IV_LENGTH = 16;
+    private const ITERATIONS = 10000;
+
+    private LoggerService $logger;
 
     /**
-     * Encrypt data using WordPress salt keys.
+     * Initialize encryption service.
      *
-     * @param string $data Data to encrypt.
-     * @return string Encrypted data.
-     * @throws \RuntimeException If encryption fails.
+     * @param LoggerService $logger Logger service instance
      */
-    public static function encrypt(string $data): string 
+    public function __construct(LoggerService $logger) 
     {
-        if (empty($data)) {
-            return '';
-        }
+        $this->logger = $logger;
+    }
 
+    /**
+     * Encrypt a value.
+     *
+     * @param string $value Value to encrypt
+     * @return string Encrypted value
+     */
+    public function encrypt(string $value): string 
+    {
         try {
-            $key = self::generate_key();
+            if (empty($value)) {
+                return '';
+            }
+
+            $key = $this->generate_key();
             $iv = random_bytes(self::IV_LENGTH);
+            $salt = random_bytes(self::KEY_LENGTH);
+            
+            $key_derived = hash_pbkdf2(
+                self::HASH_ALGO,
+                $key,
+                $salt,
+                self::ITERATIONS,
+                self::KEY_LENGTH,
+                true
+            );
             
             $encrypted = openssl_encrypt(
-                $data,
+                $value,
                 self::CIPHER_ALGO,
-                $key,
+                $key_derived,
                 OPENSSL_RAW_DATA,
                 $iv
             );
-
+            
             if ($encrypted === false) {
-                throw new \RuntimeException('Encryption failed: ' . openssl_error_string());
+                throw new \RuntimeException('Encryption failed');
             }
-
-            return base64_encode($iv . $encrypted);
+            
+            $encoded = base64_encode($iv . $salt . $encrypted);
+            return $encoded;
             
         } catch (\Exception $e) {
-            throw new \RuntimeException('Encryption failed: ' . $e->getMessage());
+            $this->logger->error('Encryption failed', ['error' => esc_html($e->getMessage())]);
+            return '';
         }
     }
 
     /**
-     * Decrypt data using WordPress salt keys.
+     * Decrypt a value.
      *
-     * @param string $encrypted_data Encrypted data to decrypt.
-     * @return string Decrypted data.
-     * @throws \RuntimeException If decryption fails.
+     * @param string $encrypted_value Value to decrypt
+     * @return string Decrypted value
      */
-    public static function decrypt(string $encrypted_data): string 
+    public function decrypt(string $encrypted_value): string 
     {
-        if (empty($encrypted_data)) {
-            return '';
-        }
-
         try {
-            $decoded = base64_decode($encrypted_data, true);
+            if (empty($encrypted_value)) {
+                return '';
+            }
             
+            $decoded = base64_decode($encrypted_value);
             if ($decoded === false) {
                 throw new \RuntimeException('Invalid base64 encoding');
             }
-
-            $iv = substr($decoded, 0, self::IV_LENGTH);
-            $encrypted = substr($decoded, self::IV_LENGTH);
             
-            if (strlen($iv) !== self::IV_LENGTH) {
-                throw new \RuntimeException('Invalid IV length');
+            $iv = substr($decoded, 0, self::IV_LENGTH);
+            $salt = substr($decoded, self::IV_LENGTH, self::KEY_LENGTH);
+            $ciphertext = substr($decoded, self::IV_LENGTH + self::KEY_LENGTH);
+            
+            if (strlen($iv) !== self::IV_LENGTH || strlen($salt) !== self::KEY_LENGTH) {
+                throw new \RuntimeException('Invalid encrypted data format');
             }
-
-            $key = self::generate_key();
+            
+            $key = $this->generate_key();
+            $key_derived = hash_pbkdf2(
+                self::HASH_ALGO,
+                $key,
+                $salt,
+                self::ITERATIONS,
+                self::KEY_LENGTH,
+                true
+            );
             
             $decrypted = openssl_decrypt(
-                $encrypted,
+                $ciphertext,
                 self::CIPHER_ALGO,
-                $key,
+                $key_derived,
                 OPENSSL_RAW_DATA,
                 $iv
             );
-
+            
             if ($decrypted === false) {
-                throw new \RuntimeException('Decryption failed: ' . openssl_error_string());
+                throw new \RuntimeException('Decryption failed');
             }
-
+            
             return $decrypted;
             
         } catch (\Exception $e) {
-            throw new \RuntimeException('Decryption failed: ' . $e->getMessage());
+            $this->logger->error('Decryption failed', ['error' => esc_html($e->getMessage())]);
+            return '';
         }
     }
 
@@ -106,7 +138,7 @@ final class Encryption {
      *
      * @return string Generated key.
      */
-    private static function generate_key(): string 
+    private function generate_key(): string 
     {
         $salt = AUTH_KEY . SECURE_AUTH_KEY . LOGGED_IN_KEY . NONCE_KEY;
         return substr(hash(self::HASH_ALGO, $salt), 0, self::KEY_LENGTH);

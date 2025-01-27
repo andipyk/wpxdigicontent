@@ -20,14 +20,15 @@ class TemplateController {
     }
     
     public function register_routes(): void {
+        // Get all templates and create new template
         register_rest_route('digicontent/v1', '/templates', [
             [
-                'methods' => WP_REST_Server::READABLE,
+                'methods' => \WP_REST_Server::READABLE,
                 'callback' => [$this, 'get_templates'],
                 'permission_callback' => [$this, 'check_permission'],
             ],
             [
-                'methods' => WP_REST_Server::CREATABLE,
+                'methods' => \WP_REST_Server::CREATABLE,
                 'callback' => [$this, 'create_template'],
                 'permission_callback' => [$this, 'check_permission'],
                 'args' => [
@@ -53,52 +54,41 @@ class TemplateController {
                 ],
             ],
         ]);
-        
+
+        // Single template operations (get, update, delete)
         register_rest_route('digicontent/v1', '/templates/(?P<id>\d+)', [
             [
-                'methods' => WP_REST_Server::READABLE,
+                'methods' => \WP_REST_Server::READABLE,
                 'callback' => [$this, 'get_template'],
                 'permission_callback' => [$this, 'check_permission'],
-                'args' => [
-                    'id' => [
-                        'required' => true,
-                        'type' => 'integer',
-                    ],
-                ],
             ],
             [
-                'methods' => WP_REST_Server::EDITABLE,
+                'methods' => \WP_REST_Server::EDITABLE,
                 'callback' => [$this, 'update_template'],
                 'permission_callback' => [$this, 'check_permission'],
-                'args' => [
-                    'id' => [
-                        'required' => true,
-                        'type' => 'integer',
-                    ],
-                    'name' => [
-                        'type' => 'string',
-                        'sanitize_callback' => 'sanitize_text_field',
-                    ],
-                    'category' => [
-                        'type' => 'string',
-                    ],
-                    'prompt' => [
-                        'type' => 'string',
-                        'sanitize_callback' => 'wp_kses_post',
-                    ],
-                    'variables' => [
-                        'type' => 'array',
-                    ],
-                ],
             ],
             [
-                'methods' => WP_REST_Server::DELETABLE,
+                'methods' => \WP_REST_Server::DELETABLE,
                 'callback' => [$this, 'delete_template'],
                 'permission_callback' => [$this, 'check_permission'],
+            ],
+        ]);
+
+        // Generate content endpoint
+        register_rest_route('digicontent/v1', '/generate', [
+            [
+                'methods' => \WP_REST_Server::CREATABLE,
+                'callback' => [$this, 'generate_content'],
+                'permission_callback' => [$this, 'check_permission'],
                 'args' => [
-                    'id' => [
+                    'prompt' => [
                         'required' => true,
-                        'type' => 'integer',
+                        'type' => 'string',
+                    ],
+                    'model' => [
+                        'required' => true,
+                        'type' => 'string',
+                        'enum' => ['gpt-4-turbo-preview', 'claude-3-sonnet'],
                     ],
                 ],
             ],

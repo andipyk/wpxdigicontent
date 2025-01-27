@@ -10,6 +10,73 @@ namespace DigiContent\Core\Services;
 final class LoggerService {
     private const LOG_FILE = 'digicontent-debug.log';
     
+    private $log_dir;
+
+    /**
+     * Initialize logger and create log directory if needed.
+     */
+    public function __construct() 
+    {
+        $this->log_dir = WP_CONTENT_DIR . '/digicontent-logs';
+        
+        if (!$this->ensure_log_directory()) {
+            throw new \RuntimeException('Failed to create log directory');
+        }
+    }
+
+    /**
+     * Ensure log directory exists and is writable.
+     */
+    private function ensure_log_directory(): bool 
+    {
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        WP_Filesystem();
+        global $wp_filesystem;
+
+        if (!$wp_filesystem->exists($this->log_dir)) {
+            if (!$wp_filesystem->mkdir($this->log_dir, 0755)) {
+                return false;
+            }
+
+            // Create .htaccess to prevent direct access
+            $htaccess = "Order deny,allow\nDeny from all";
+            $wp_filesystem->put_contents(
+                $this->log_dir . '/.htaccess',
+                $htaccess,
+                FS_CHMOD_FILE
+            );
+        }
+
+        return $wp_filesystem->is_writable($this->log_dir);
+    }
+
+    /**
+     * Write log entry to file.
+     */
+    private function write_log(string $level, string $message, array $context = []): void 
+    {
+        $timestamp = date('Y-m-d H:i:s');
+        $log_file = $this->log_dir . '/digicontent-' . date('Y-m-d') . '.log';
+        
+        $entry = sprintf(
+            "[%s] %s: %s %s\n",
+            $timestamp,
+            strtoupper($level),
+            $message,
+            !empty($context) ? wp_json_encode($context) : ''
+        );
+
+        if (file_exists($log_file)) {
+            file_put_contents($log_file, $entry, FILE_APPEND);
+        } else {
+            file_put_contents($log_file, $entry);
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log(sprintf('DigiContent: %s', $entry));
+        }
+    }
+
     /**
      * Log a message with the specified level.
      *
@@ -26,22 +93,7 @@ final class LoggerService {
         }
 
         try {
-            if (!is_dir(WP_CONTENT_DIR . '/logs')) {
-                $created = mkdir(WP_CONTENT_DIR . '/logs', 0755, true);
-                if (!$created) {
-                    throw new \RuntimeException('Failed to create logs directory');
-                }
-            }
-            
-            $log_entry = sprintf(
-                "[%s] %s: %s %s\n",
-                current_time('Y-m-d H:i:s'),
-                strtoupper($level),
-                $message,
-                !empty($context) ? json_encode($context) : ''
-            );
-            
-            error_log($log_entry, 3, WP_CONTENT_DIR . '/logs/' . self::LOG_FILE);
+            $this->write_log($level, $message, $context);
         } catch (\RuntimeException $e) {
             throw $e;
         }

@@ -106,14 +106,14 @@ class TemplateManager {
     
     async submitTemplate(formData, submitButton) {
         submitButton.disabled = true;
-        submitButton.textContent = 'Saving...';
+        submitButton.textContent = digiContentSettings.i18n.saving;
         
         try {
-            const response = await fetch(`${wpApiSettings.root}digicontent/v1/templates`, {
+            const response = await fetch(`${digiContentSettings.root}templates`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-WP-Nonce': wpApiSettings.nonce
+                    'X-WP-Nonce': digiContentSettings.nonce
                 },
                 body: JSON.stringify(formData)
             });
@@ -121,10 +121,10 @@ class TemplateManager {
             const data = await response.json();
             
             if (!response.ok) {
-                throw new Error(data.message || 'Failed to save template');
+                throw new Error(data.message || digiContentSettings.i18n.error);
             }
             
-            this.showNotice('Template saved successfully!', 'success');
+            this.showNotice(digiContentSettings.i18n.saved, 'success');
             this.form.reset();
             
             setTimeout(() => window.location.reload(), 1500);
@@ -139,34 +139,34 @@ class TemplateManager {
         const button = event.target;
         const templateId = button.dataset.id;
         
-        if (!confirm('Are you sure you want to delete this template?')) return;
+        if (!confirm(digiContentSettings.i18n.confirmDelete)) return;
         
         try {
             button.disabled = true;
             await this.deleteTemplate(templateId);
             
-            this.showNotice('Template deleted successfully!', 'success');
+            this.showNotice(digiContentSettings.i18n.deleted, 'success');
             button.closest('tr')?.remove();
             
         } catch (error) {
             console.error('Template delete error:', error);
-            this.showNotice(error.message || 'Failed to delete template', 'error');
+            this.showNotice(error.message || digiContentSettings.i18n.error, 'error');
         } finally {
             button.disabled = false;
         }
     }
     
     async deleteTemplate(templateId) {
-        const response = await fetch(`${wpApiSettings.root}digicontent/v1/templates/${templateId}`, {
+        const response = await fetch(`${digiContentSettings.root}templates/${templateId}`, {
             method: 'DELETE',
             headers: {
-                'X-WP-Nonce': wpApiSettings.nonce
+                'X-WP-Nonce': digiContentSettings.nonce
             }
         });
         
         if (!response.ok) {
             const data = await response.json();
-            throw new Error(data.message || 'Failed to delete template');
+            throw new Error(data.message || digiContentSettings.i18n.error);
         }
     }
     
@@ -182,23 +182,23 @@ class TemplateManager {
             
         } catch (error) {
             console.error('Template edit error:', error);
-            this.showNotice(error.message || 'Failed to load template', 'error');
+            this.showNotice(error.message || digiContentSettings.i18n.error, 'error');
         } finally {
             button.disabled = false;
         }
     }
     
     async fetchTemplate(templateId) {
-        const response = await fetch(`${wpApiSettings.root}digicontent/v1/templates/${templateId}`, {
+        const response = await fetch(`${digiContentSettings.root}templates/${templateId}`, {
             headers: {
-                'X-WP-Nonce': wpApiSettings.nonce
+                'X-WP-Nonce': digiContentSettings.nonce
             }
         });
         
         const data = await response.json();
         
         if (!response.ok) {
-            throw new Error(data.message || 'Failed to load template');
+            throw new Error(data.message || digiContentSettings.i18n.error);
         }
         
         return data;

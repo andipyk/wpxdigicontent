@@ -5,6 +5,7 @@ namespace DigiContent\Admin;
 
 use DigiContent\Core\Services\TemplateService;
 use DigiContent\Core\Services\LoggerService;
+use DigiContent\Core\AIGenerator;
 
 /**
  * Handles integration with WordPress post editor
@@ -12,10 +13,12 @@ use DigiContent\Core\Services\LoggerService;
 class Editor {
     private TemplateService $template_service;
     private LoggerService $logger;
+    private AIGenerator $ai_generator;
 
-    public function __construct(TemplateService $template_service, LoggerService $logger) {
+    public function __construct(TemplateService $template_service, LoggerService $logger, AIGenerator $ai_generator) {
         $this->template_service = $template_service;
         $this->logger = $logger;
+        $this->ai_generator = $ai_generator;
         
         $this->init();
     }
@@ -72,90 +75,127 @@ class Editor {
         wp_enqueue_script(
             'digicontent-editor',
             plugins_url('assets/js/admin/editor.js', dirname(__DIR__)),
-            ['wp-blocks', 'wp-data', 'wp-editor'],
+            ['jquery', 'wp-blocks', 'wp-data', 'wp-editor', 'wp-api', 'wp-api-request'],
             DIGICONTENT_VERSION,
             true
         );
 
         // Pass data to JavaScript
         wp_localize_script('digicontent-editor', 'digiContentEditor', [
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('digicontent_nonce'),
+            'root' => esc_url_raw(rest_url('digicontent/v1/')),
+            'nonce' => wp_create_nonce('wp_rest'),
+            'templates' => $this->getTemplatesForJs(),
             'i18n' => [
                 'error' => __('An error occurred. Please try again.', 'digicontent'),
                 'generating' => __('Generating...', 'digicontent'),
                 'templateLoadError' => __('Failed to load template. Please try again.', 'digicontent'),
-                'emptyPrompt' => __('Please enter a prompt.', 'digicontent')
+                'emptyPrompt' => __('Please enter a prompt.', 'digicontent'),
+                'insertContent' => __('Insert Generated Content', 'digicontent'),
+                'cancel' => __('Cancel', 'digicontent')
             ]
         ]);
     }
 
+    /**
+     * Get templates for JavaScript
+     */
+    private function getTemplatesForJs(): array {
+        try {
+            $templates = $this->template_service->getTemplates();
+            return array_map(function($template) {
+                return [
+                    'id' => $template->id,
+                    'name' => $template->name,
+                    'category' => $template->category,
+                    'prompt' => $template->prompt,
+                    'variables' => maybe_unserialize($template->variables)
+                ];
+            }, $templates);
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to get templates for editor', [
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * AJAX handler for getting template content
+     */
     public function getTemplateContent(): void {
         try {
-            if (!check_ajax_referer('digicontent_nonce', 'nonce', false)) {
-                throw new \Exception('Invalid security token');
-            }
+            check_ajax_referer('wp_rest', 'nonce');
 
             if (!current_user_can('edit_posts')) {
-                throw new \Exception('Insufficient permissions');
+                throw new \Exception(__('You do not have permission to perform this action.', 'digicontent'));
             }
 
-            $template_id = filter_input(INPUT_POST, 'template_id', FILTER_SANITIZE_NUMBER_INT);
+            $template_id = filter_input(INPUT_POST, 'template_id', FILTER_VALIDATE_INT);
             if (!$template_id) {
-                throw new \Exception('Template ID is required');
+                throw new \Exception(__('Invalid template ID.', 'digicontent'));
             }
 
-            $this->logger->info('Loading template content', ['template_id' => $template_id]);
-            
-            $template = $this->template_service->getTemplate((int) $template_id);
+            $template = $this->template_service->getTemplate($template_id);
             if (!$template) {
-                throw new \Exception('Template not found');
+                throw new \Exception(__('Template not found.', 'digicontent'));
             }
 
-            wp_send_json_success(['prompt' => $template->prompt]);
+            wp_send_json_success([
+                'prompt' => $template->prompt,
+                'variables' => maybe_unserialize($template->variables)
+            ]);
 
         } catch (\Exception $e) {
             $this->logger->error('Failed to get template content', [
                 'error' => $e->getMessage(),
-                'template_id' => $template_id ?? null,
-                'user_id' => get_current_user_id()
+                'template_id' => $template_id ?? null
             ]);
-            wp_send_json_error([
-                'message' => $e->getMessage(),
-                'code' => $e->getCode()
-            ]);
+            wp_send_json_error(['message' => $e->getMessage()]);
         }
     }
 
+    /**
+     * AJAX handler for generating AI content
+     */
     public function generateAIContent(): void {
         try {
-            check_ajax_referer('digicontent_nonce');
+            check_ajax_referer('wp_rest', 'nonce');
 
             if (!current_user_can('edit_posts')) {
-                throw new \Exception('Insufficient permissions');
+                throw new \Exception(__('You do not have permission to perform this action.', 'digicontent'));
             }
 
-            $prompt = filter_input(INPUT_POST, 'prompt', FILTER_SANITIZE_STRING);
-            $model = filter_input(INPUT_POST, 'model', FILTER_SANITIZE_STRING);
-
-            if (!$prompt) {
-                throw new \Exception('Prompt is required');
+            $prompt = filter_input(INPUT_POST, 'prompt', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+            if (empty($prompt)) {
+                throw new \Exception(__('Prompt is required.', 'digicontent'));
             }
 
-            if (!in_array($model, ['gpt-4-turbo-preview', 'claude-3-sonnet'])) {
-                throw new \Exception('Invalid AI model');
+            $model = filter_input(INPUT_POST, 'model', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+            if (empty($model)) {
+                throw new \Exception(__('AI model is required.', 'digicontent'));
             }
 
-            // Generate content using AI service
-            $content = $this->template_service->generateContent($prompt, $model);
-            
+            $variables = filter_input(INPUT_POST, 'variables', FILTER_DEFAULT, FILTER_REQUIRE_ARRAY) ?: [];
+            $variables = array_map('sanitize_text_field', $variables);
+
+            // Replace variables in prompt
+            foreach ($variables as $key => $value) {
+                $prompt = str_replace('((' . $key . '))', $value, $prompt);
+            }
+
+            $content = $this->ai_generator->generate($prompt, $model);
+            if (empty($content)) {
+                throw new \Exception(__('Failed to generate content. Please try again.', 'digicontent'));
+            }
+
             wp_send_json_success(['content' => $content]);
 
         } catch (\Exception $e) {
             $this->logger->error('Failed to generate content', [
                 'error' => $e->getMessage(),
                 'prompt' => $prompt ?? null,
-                'model' => $model ?? null
+                'model' => $model ?? null,
+                'variables' => $variables ?? null
             ]);
             wp_send_json_error(['message' => $e->getMessage()]);
         }

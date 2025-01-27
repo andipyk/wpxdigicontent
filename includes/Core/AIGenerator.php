@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DigiContent\Core;
 
 use DigiContent\Core\Services\LoggerService;
+use DigiContent\Core\Services\EncryptionService;
 
 /**
  * Handles AI content generation using various models.
@@ -29,14 +30,26 @@ final class AIGenerator {
     private LoggerService $logger;
     private ?string $anthropic_key;
     private ?string $openai_key;
+    private EncryptionService $encryption;
 
     /**
      * Initialize AI generator with API keys.
      */
-    public function __construct(LoggerService $logger) 
+    public function __construct(LoggerService $logger, EncryptionService $encryption) 
     {
         $this->logger = $logger;
-        $this->load_api_keys();
+        $this->encryption = $encryption;
+        
+        $anthropic_key = get_option('digicontent_anthropic_key');
+        $openai_key = get_option('digicontent_openai_key');
+        
+        $this->anthropic_key = !empty($anthropic_key) 
+            ? $this->encryption->decrypt($anthropic_key) 
+            : null;
+
+        $this->openai_key = !empty($openai_key) 
+            ? $this->encryption->decrypt($openai_key) 
+            : null;
     }
 
     /**
@@ -171,30 +184,6 @@ final class AIGenerator {
         }
 
         return $body['choices'][0]['message']['content'];
-    }
-
-    /**
-     * Load and decrypt API keys from WordPress options.
-     */
-    private function load_api_keys(): void 
-    {
-        try {
-            $anthropic_key = get_option('digicontent_anthropic_key');
-            $openai_key = get_option('digicontent_openai_key');
-
-            $this->anthropic_key = !empty($anthropic_key) 
-                ? Encryption::decrypt($anthropic_key) 
-                : null;
-
-            $this->openai_key = !empty($openai_key) 
-                ? Encryption::decrypt($openai_key) 
-                : null;
-
-        } catch (\Exception $e) {
-            $this->logger->error('Failed to load API keys', ['error' => $e->getMessage()]);
-            $this->anthropic_key = null;
-            $this->openai_key = null;
-        }
     }
 
     /**

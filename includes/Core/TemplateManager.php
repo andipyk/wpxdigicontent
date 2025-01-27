@@ -201,35 +201,54 @@ class TemplateManager {
         try {
             $body = $request->get_json_params();
 
-            if (!array_key_exists($body['category'], self::CATEGORIES)) {
+            if (empty($body['category']) || !array_key_exists($body['category'], self::CATEGORIES)) {
                 return new \WP_REST_Response(
-                    ['message' => 'Invalid category specified. Please select a valid template category.'],
+                    ['message' => __('Invalid category specified. Please select a valid template category.', 'digicontent')],
                     400
                 );
             }
 
             $template_data = [
-                'name' => sanitize_text_field($body['name']),
+                'name' => sanitize_text_field($body['name'] ?? ''),
                 'category' => sanitize_text_field($body['category']),
-                'prompt' => wp_kses_post($body['prompt']),
-                'variables' => maybe_serialize(array_map('sanitize_text_field', $body['variables'] ?? []))
+                'prompt' => wp_kses_post($body['prompt'] ?? ''),
+                'variables' => array_map('sanitize_text_field', $body['variables'] ?? [])
             ];
 
-            $template_id = $this->template_repository->create($template_data);
+            global $wpdb;
+            $table = $this->get_table_name('templates');
             
-            if ($template_id === false) {
+            $result = $wpdb->insert(
+                $table,
+                $template_data,
+                ['%s', '%s', '%s', '%s']
+            );
+
+            if ($result === false) {
+                $this->logger->error('Failed to save template', [
+                    'data' => $template_data,
+                    'error' => $wpdb->last_error
+                ]);
                 return new \WP_REST_Response(
-                    ['message' => 'Database error: Failed to create template. Please check the logs for details.'],
+                    ['message' => __('Failed to save template. Please try again.', 'digicontent')],
                     500
                 );
             }
+
+            $template_id = $wpdb->insert_id;
+            wp_cache_delete('digicontent_templates');
             
-            $this->warm_cache();
-            $template = $this->template_repository->get($template_id);
-            return new \WP_REST_Response($template, 201);
+            return new \WP_REST_Response([
+                'id' => $template_id,
+                'message' => __('Template saved successfully.', 'digicontent')
+            ], 201);
+
         } catch (\Exception $e) {
+            $this->logger->error('Error saving template', [
+                'error' => $e->getMessage()
+            ]);
             return new \WP_REST_Response(
-                ['message' => 'Error saving template: ' . $e->getMessage()],
+                ['message' => __('An unexpected error occurred.', 'digicontent')],
                 500
             );
         }
@@ -282,5 +301,16 @@ class TemplateManager {
             error_log('Template processing error: ' . $e->getMessage());
             return $template_content;
         }
+    }
+
+    /**
+     * Get full table name with prefix
+     *
+     * @param string $table Base table name
+     * @return string Full table name
+     */
+    private function get_table_name(string $table): string {
+        global $wpdb;
+        return $wpdb->prefix . 'digicontent_' . $table;
     }
 }

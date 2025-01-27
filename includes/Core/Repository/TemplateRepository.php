@@ -44,6 +44,7 @@ class TemplateRepository {
             return false;
         }
 
+        wp_cache_delete('digicontent_templates');
         return $wpdb->insert_id;
     }
 
@@ -54,15 +55,26 @@ class TemplateRepository {
      * @return object|null Template object or null if not found
      */
     public function get($id) {
+        $cache_key = 'digicontent_template_' . $id;
+        $cached = wp_cache_get($cache_key);
+        
+        if (false !== $cached) {
+            return $cached;
+        }
+
         global $wpdb;
         $table = $this->getTableName();
 
-        $template = $wpdb->get_row(
-            $wpdb->prepare("SELECT * FROM $table WHERE id = %d", $id)
+        $sql = $wpdb->prepare(
+            "SELECT * FROM {$table} WHERE id = %d",
+            $id
         );
+        
+        $template = $wpdb->get_row($sql);
 
         if ($template) {
             $template->variables = maybe_unserialize($template->variables);
+            wp_cache_set($cache_key, $template);
         }
 
         return $template;
@@ -75,6 +87,13 @@ class TemplateRepository {
      * @return array Array of template objects
      */
     public function get_all($args = []) {
+        $cache_key = 'digicontent_templates_' . md5(serialize($args));
+        $cached = wp_cache_get($cache_key);
+        
+        if (false !== $cached) {
+            return $cached;
+        }
+
         global $wpdb;
         $table = $this->getTableName();
 
@@ -88,23 +107,35 @@ class TemplateRepository {
 
         $args = wp_parse_args($args, $defaults);
         $where = '';
+        $query_args = [];
+
+        // Validate and sanitize orderby
+        $allowed_orderby = ['created_at', 'name', 'category'];
+        $args['orderby'] = in_array($args['orderby'], $allowed_orderby) ? $args['orderby'] : 'created_at';
+        
+        // Validate and sanitize order
+        $args['order'] = in_array(strtoupper($args['order']), ['ASC', 'DESC']) ? strtoupper($args['order']) : 'DESC';
 
         if (!empty($args['category'])) {
-            $where = $wpdb->prepare(' WHERE category = %s', $args['category']);
+            $where = ' WHERE category = %s';
+            $query_args[] = $args['category'];
         }
 
-        $sql = "SELECT * FROM $table$where
-                ORDER BY {$args['orderby']} {$args['order']}
-                LIMIT %d OFFSET %d";
+        $query_args[] = (int) $args['limit'];
+        $query_args[] = (int) $args['offset'];
 
-        $templates = $wpdb->get_results(
-            $wpdb->prepare($sql, $args['limit'], $args['offset'])
+        $sql = $wpdb->prepare(
+            "SELECT * FROM {$table}{$where} ORDER BY {$args['orderby']} {$args['order']} LIMIT %d OFFSET %d",
+            ...$query_args
         );
+
+        $templates = $wpdb->get_results($sql);
 
         foreach ($templates as $template) {
             $template->variables = maybe_unserialize($template->variables);
         }
 
+        wp_cache_set($cache_key, $templates);
         return $templates;
     }
 
@@ -141,6 +172,8 @@ class TemplateRepository {
             return false;
         }
 
+        wp_cache_delete('digicontent_template_' . $id);
+        wp_cache_delete('digicontent_templates');
         return true;
     }
 
@@ -168,6 +201,8 @@ class TemplateRepository {
             return false;
         }
 
+        wp_cache_delete('digicontent_template_' . $id);
+        wp_cache_delete('digicontent_templates');
         return true;
     }
 }

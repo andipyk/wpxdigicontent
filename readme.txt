@@ -1,8 +1,8 @@
-=== DigiContent - AI Content Generator ===
+=== DigiContent ===
 Contributors: andisyafrianda
-Tags: ai, content-generator, openai, anthropic, claude, gpt4
+Tags: ai, content-generator, openai, claude, gpt4
 Requires at least: 6.0
-Tested up to: 6.4
+Tested up to: 6.7
 Requires PHP: 8.0
 Stable tag: 1.1.0
 License: GPLv2 or later

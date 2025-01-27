@@ -178,7 +178,7 @@ final class Settings {
     public function render_settings_page(): void 
     {
         if (!current_user_can($this->capability)) {
-            wp_die(__('You do not have sufficient permissions to access this page.'));
+            wp_die(__('You do not have sufficient permissions to access this page.', 'digicontent'));
         }
 
         $this->enqueue_assets();
@@ -222,32 +222,35 @@ final class Settings {
      */
     private function enqueue_assets(): void 
     {
-        $css_file = dirname(__DIR__) . '/assets/css/admin.css';
-        $js_file = dirname(__DIR__) . '/assets/js/admin/template-manager.js';
-
+        // Enqueue styles
         wp_enqueue_style(
             'digicontent-admin',
             plugins_url('assets/css/admin.css', dirname(__DIR__)),
             [],
-            file_exists($css_file) ? filemtime($css_file) : DIGICONTENT_VERSION
+            DIGICONTENT_VERSION
         );
-        
+
+        // Enqueue scripts
         wp_enqueue_script(
             'digicontent-template-manager',
             plugins_url('assets/js/admin/template-manager.js', dirname(__DIR__)),
-            ['wp-api'],
-            file_exists($js_file) ? filemtime($js_file) : DIGICONTENT_VERSION,
+            ['jquery', 'wp-api', 'wp-api-request'],
+            DIGICONTENT_VERSION,
             true
         );
-        
-        wp_localize_script(
-            'digicontent-template-manager',
-            'wpApiSettings',
-            [
-                'root' => esc_url_raw(rest_url()),
-                'nonce' => wp_create_nonce('wp_rest'),
+
+        // Localize script
+        wp_localize_script('digicontent-template-manager', 'digiContentSettings', [
+            'root' => esc_url_raw(rest_url('digicontent/v1/')),
+            'nonce' => wp_create_nonce('wp_rest'),
+            'i18n' => [
+                'confirmDelete' => __('Are you sure you want to delete this template?', 'digicontent'),
+                'saving' => __('Saving...', 'digicontent'),
+                'saved' => __('Template saved successfully!', 'digicontent'),
+                'deleted' => __('Template deleted successfully!', 'digicontent'),
+                'error' => __('An error occurred. Please try again.', 'digicontent')
             ]
-        );
+        ]);
     }
 
     /**
@@ -274,9 +277,7 @@ final class Settings {
      */
     public function render_debug_section(): void 
     {
-        echo '<p>' . 
-            esc_html__('Configure debug logging settings for troubleshooting.', 'digicontent') . 
-            '</p>';
+        echo '<p>' . esc_html__('Configure debug logging settings for troubleshooting.', 'digicontent') . '</p>';
     }
 
     /**
@@ -305,9 +306,7 @@ final class Settings {
      */
     public function render_api_section(): void 
     {
-        echo '<p>' . 
-            esc_html__('Enter your API keys for AI content generation services.', 'digicontent') . 
-            '</p>';
+        echo '<p>' . esc_html__('Enter your API keys for AI content generation services.', 'digicontent') . '</p>';
     }
 
     /**
@@ -369,15 +368,17 @@ final class Settings {
     private function get_api_key_tooltip(string $field_id): string 
     {
         if ($field_id === 'digicontent_anthropic_key') {
+            /* translators: %1$s: opening link tag, %2$s: closing link tag */
             return sprintf(
-                __('Enter your Anthropic API key to use Claude AI for content generation. You can obtain this from %sAnthropics API key settings%s.', 'digicontent'),
+                __('Enter your Anthropic API key to use Claude AI for content generation. You can obtain this from %1$sAnthropics API key settings%2$s.', 'digicontent'),
                 '<a href="https://console.anthropic.com/settings/keys" target="_blank">',
                 '</a>'
             );
         }
 
+        /* translators: %1$s: opening link tag, %2$s: closing link tag */
         return sprintf(
-            __('Enter your OpenAI API key to use GPT models for content generation. You can obtain this from %sOpenAIs API key settings%s.', 'digicontent'),
+            __('Enter your OpenAI API key to use GPT models for content generation. You can obtain this from %1$sOpenAIs API key settings%2$s.', 'digicontent'),
             '<a href="https://platform.openai.com/api-keys" target="_blank">',
             '</a>'
         );
@@ -392,25 +393,26 @@ final class Settings {
             return;
         }
 
-        if (isset($_GET['settings-updated']) && $_GET['settings-updated']) {
-            $option_page = $_GET['option_page'] ?? '';
-            $message = '';
-
-            // Tentukan pesan berdasarkan halaman pengaturan yang disimpan
-            if ($option_page === 'digicontent_debug_settings') {
-                $message = __('Debug settings saved successfully.', 'digicontent');
-            } elseif ($option_page === 'digicontent_api_settings') {
-                $message = __('API settings saved successfully.', 'digicontent');
-            } elseif ($option_page === 'options') {
-                $message = __('Settings saved successfully.', 'digicontent');
+        // Validate debug settings
+        if (isset($_POST['digicontent_debug_nonce'])) {
+            $nonce = wp_unslash(sanitize_text_field($_POST['digicontent_debug_nonce']));
+            if (!wp_verify_nonce($nonce, 'digicontent_debug_settings')) {
+                wp_die(esc_html__('Invalid nonce verification', 'digicontent'));
             }
+        }
 
-            if ($message) {
-                ?>
-                <div class="notice notice-success is-dismissible">
-                    <p><?php echo esc_html($message); ?></p>
-                </div>
-                <?php
+        // Validate settings update
+        if (isset($_GET['settings-updated'])) {
+            $settings_updated = wp_unslash(sanitize_text_field($_GET['settings-updated']));
+            $option_page = isset($_GET['option_page']) ? wp_unslash(sanitize_text_field($_GET['option_page'])) : '';
+            
+            if ($settings_updated === 'true' && $option_page === 'digicontent_api_settings') {
+                add_settings_error(
+                    'digicontent_messages',
+                    'digicontent_message',
+                    esc_html__('Settings Saved', 'digicontent'),
+                    'updated'
+                );
             }
         }
     }
