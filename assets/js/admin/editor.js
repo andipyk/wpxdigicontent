@@ -154,11 +154,16 @@ class DigiContentEditor {
     }
 
     async insertGeneratedContent(content) {
-        const { createBlock } = wp.blocks;
-        const { dispatch } = wp.data;
+        try {
+            const { createBlock } = wp.blocks;
+            const { dispatch } = wp.data;
 
-        const block = createBlock('core/paragraph', { content });
-        dispatch('core/editor').insertBlock(block);
+            const block = createBlock('core/paragraph', { content });
+            dispatch('core/editor').insertBlock(block);
+        } catch (error) {
+            console.error('Block insertion failed:', error);
+            this.showNotification(digiContentEditor.i18n.insertError, 'error');
+        }
     }
 
     extractVariables(prompt) {
