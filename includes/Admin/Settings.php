@@ -291,6 +291,11 @@ final class Settings {
                 $value = $this->get_decrypted_key($field_id);
             } catch (\Exception $e) {
                 $this->logger->error('Failed to decrypt API key', ['error' => $e->getMessage()]);
+                add_settings_error(
+                    'digicontent_api_settings',
+                    'invalid_key',
+                    __('Stored API key is invalid. Please re-enter your key.', 'digicontent')
+                );
             }
         }
 
@@ -374,9 +379,17 @@ final class Settings {
      * @param mixed $value The API key to encrypt.
      * @return string The encrypted API key or empty string on failure.
      */
-    public function encrypt_api_key($value): string 
-    {
-        return $this->encryption->encrypt($value);
+    public function encrypt_api_key($value): string {
+        $encrypted = $this->encryption->encrypt($value);
+        if ($encrypted === '' && !empty($value)) {
+            $this->logger->error('API key encryption failed');
+            add_settings_error(
+                'digicontent_api_settings',
+                'encryption_failed',
+                __('Failed to securely store API key. Please try again.', 'digicontent')
+            );
+        }
+        return $encrypted;
     }
 
     /**
@@ -385,9 +398,21 @@ final class Settings {
      * @param string $option_name The option name.
      * @return string The decrypted API key.
      */
-    public function get_decrypted_key(string $option_name): string 
-    {
+    public function get_decrypted_key(string $option_name): string {
         $encrypted = get_option($option_name, '');
-        return $this->encryption->decrypt($encrypted);
+        if (empty($encrypted)) {
+            return '';
+        }
+        
+        $decrypted = $this->encryption->decrypt($encrypted);
+        if ($decrypted === '' && !empty($encrypted)) {
+            $this->logger->error('API key decryption failed', ['option' => $option_name]);
+            add_settings_error(
+                'digicontent_api_settings',
+                'decryption_failed',
+                __('Failed to retrieve stored API key. Please re-enter your key.', 'digicontent')
+            );
+        }
+        return $decrypted;
     }
 }

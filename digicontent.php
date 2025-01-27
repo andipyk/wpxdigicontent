@@ -125,10 +125,28 @@ register_deactivation_hook(__FILE__, function () {
 
 // Initialize REST API routes
 add_action('rest_api_init', function() {
-    $database = new DigiContent\Core\Database($logger = new DigiContent\Core\Services\LoggerService());
-    $template_repository = new DigiContent\Core\Repository\TemplateRepository($database);
-    $template_service = new DigiContent\Core\Services\TemplateService($template_repository, $logger);
-    
-    $template_controller = new DigiContent\Core\REST\TemplateController($template_service, $logger);
-    $template_controller->register_routes();
+    try {
+        // Initialize services with proper error handling
+        $logger = new DigiContent\Core\Services\LoggerService();
+        
+        $database = new DigiContent\Core\Database($logger);
+        if (!$database->check_tables_exist()) {
+            $logger->error('Required database tables are missing');
+            return;
+        }
+        
+        $template_repository = new DigiContent\Core\Repository\TemplateRepository($database);
+        $template_service = new DigiContent\Core\Services\TemplateService($template_repository, $logger);
+        
+        // Register REST routes with proper authentication
+        $template_controller = new DigiContent\Core\REST\TemplateController($template_service, $logger);
+        $template_controller->register_routes();
+        
+    } catch (\Exception $e) {
+        if (isset($logger)) {
+            $logger->error('REST API initialization error', ['error' => $e->getMessage()]);
+        } else {
+            error_log('DigiContent REST API Error: ' . $e->getMessage());
+        }
+    }
 });

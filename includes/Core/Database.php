@@ -269,4 +269,34 @@ final class Database {
 
         return $this->wpdb->query($sql);
     }
+
+    /**
+     * Check if required database tables exist
+     *
+     * @return bool True if all required tables exist, false otherwise
+     */
+    public function check_tables_exist(): bool {
+        global $wpdb;
+        
+        try {
+            $tables = [
+                $this->get_table_name('templates'),
+                $this->get_table_name('logs')
+            ];
+            
+            foreach ($tables as $table) {
+                $exists = $wpdb->get_var("SHOW TABLES LIKE '$table'");
+                if (!$exists) {
+                    $this->logger->error('Required table missing', ['table' => $table]);
+                    return false;
+                }
+            }
+            
+            return true;
+            
+        } catch (\Exception $e) {
+            $this->logger->error('Error checking tables', ['error' => $e->getMessage()]);
+            return false;
+        }
+    }
 }

@@ -3,8 +3,17 @@ declare(strict_types=1);
 
 namespace DigiContent\Core;
 
+use DigiContent\Core\Services\LoggerService;
+use DigiContent\Core\Repository\TemplateRepository;
+
 class TemplateManager {
+    /** @var TemplateRepository */
     private $template_repository;
+    
+    /** @var LoggerService */
+    private $logger;
+    
+    /** Available template categories */
     private const CATEGORIES = [
         'blog_post' => 'Blog Post',
         'product_description' => 'Product Description',
@@ -13,12 +22,19 @@ class TemplateManager {
         'email' => 'Email Template',
         'seo' => 'SEO Content'
     ];
-    private const CACHE_EXPIRATION = 3600; // 1 hour in seconds
+    
+    /** Cache expiration time in seconds */
+    private const CACHE_EXPIRATION = 3600;
+    
+    /** Maximum number of template versions to keep */
     private const MAX_VERSIONS = 5;
+    
+    /** WordPress option key for storing templates */
     private const TEMPLATE_OPTION_KEY = 'digicontent_templates';
 
-    public function __construct($template_repository) {
+    public function __construct($template_repository, LoggerService $logger) {
         $this->template_repository = $template_repository;
+        $this->logger = $logger;
         add_action('init', [$this, 'init']);
     }
 
@@ -114,12 +130,19 @@ class TemplateManager {
         }
     }
 
+    private function warm_cache(): void {
+        try {
+            $templates = $this->template_repository->get_all();
+            set_transient('digicontent_templates_cache', $templates, self::CACHE_EXPIRATION);
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to warm template cache', ['error' => $e->getMessage()]);
+        }
+    }
+
     public function get_template_versions(\WP_REST_Request $request): \WP_REST_Response {
         try {
             $template_id = $request['id'];
-            $templates = get_option(self::TEMPLATE_OPTION_KEY, []);
-            
-            $template = current(array_filter($templates, fn($t) => $t['id'] === $template_id));
+            $template = $this->template_repository->get($template_id);
             
             if (!$template) {
                 return new \WP_REST_Response(['message' => 'Template not found'], 404);
@@ -180,7 +203,7 @@ class TemplateManager {
 
             if (!array_key_exists($body['category'], self::CATEGORIES)) {
                 return new \WP_REST_Response(
-                    ['message' => 'Invalid category'],
+                    ['message' => 'Invalid category specified. Please select a valid template category.'],
                     400
                 );
             }
@@ -196,11 +219,12 @@ class TemplateManager {
             
             if ($template_id === false) {
                 return new \WP_REST_Response(
-                    ['message' => 'Failed to create template'],
+                    ['message' => 'Database error: Failed to create template. Please check the logs for details.'],
                     500
                 );
             }
             
+            $this->warm_cache();
             $template = $this->template_repository->get($template_id);
             return new \WP_REST_Response($template, 201);
         } catch (\Exception $e) {

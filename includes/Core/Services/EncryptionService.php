@@ -6,8 +6,9 @@ namespace DigiContent\Core\Services;
 class EncryptionService {
     private const CIPHER = "aes-256-cbc";
     private const HASH_ALGO = "sha256";
-    private const ITERATIONS = 1000;
+    private const ITERATIONS = 100000;
     private const KEY_LENGTH = 32;
+    private const DELIMITER = ':';
     private LoggerService $logger;
     
     public function __construct(LoggerService $logger) {
@@ -21,8 +22,8 @@ class EncryptionService {
         
         try {
             $ivlen = openssl_cipher_iv_length(self::CIPHER);
-            $iv = openssl_random_pseudo_bytes($ivlen);
-            $salt = wp_generate_password(64, true, true);
+            $iv = random_bytes($ivlen);
+            $salt = random_bytes(32);
             $key = $this->generateKey($salt);
             
             $encrypted = openssl_encrypt(
@@ -37,7 +38,11 @@ class EncryptionService {
                 throw new \Exception('Encryption failed');
             }
             
-            return base64_encode($iv . $salt . $encrypted);
+            return base64_encode(
+                bin2hex($iv) . self::DELIMITER . 
+                bin2hex($salt) . self::DELIMITER . 
+                $encrypted
+            );
             
         } catch (\Exception $e) {
             $this->logger->error('Encryption failed', ['error' => $e->getMessage()]);
@@ -51,15 +56,24 @@ class EncryptionService {
         }
         
         try {
-            $encrypted = base64_decode($encrypted);
-            if ($encrypted === false) {
+            $decoded = base64_decode($encrypted);
+            if ($decoded === false) {
                 throw new \Exception('Invalid base64 encoding');
             }
             
-            $ivlen = openssl_cipher_iv_length(self::CIPHER);
-            $iv = substr($encrypted, 0, $ivlen);
-            $salt = substr($encrypted, $ivlen, 64);
-            $ciphertext = substr($encrypted, $ivlen + 64);
+            $parts = explode(self::DELIMITER, $decoded);
+            if (count($parts) !== 3) {
+                throw new \Exception('Invalid encrypted data format');
+            }
+            
+            [$iv, $salt, $ciphertext] = $parts;
+            
+            $iv = hex2bin($iv);
+            $salt = hex2bin($salt);
+            
+            if ($iv === false || $salt === false) {
+                throw new \Exception('Invalid hex encoding');
+            }
             
             $key = $this->generateKey($salt);
             
