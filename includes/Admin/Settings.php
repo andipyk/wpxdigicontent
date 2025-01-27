@@ -410,7 +410,8 @@ final class Settings {
         }
 
         // Validate Anthropic key format (starts with 'sk-ant-')
-        if (strpos($value, 'digicontent_anthropic_key') !== false && !preg_match('/^sk-ant-[a-zA-Z0-9]{48}$/', $value)) {
+        $option_name = current_filter();
+        if ($option_name === 'sanitize_option_digicontent_anthropic_key' && !preg_match('/^sk-ant-[a-zA-Z0-9]{48}$/', $value)) {
             add_settings_error(
                 'digicontent_api_settings',
                 'invalid_key_format',
@@ -420,7 +421,7 @@ final class Settings {
         }
 
         // Validate OpenAI key format (starts with 'sk-')
-        if (strpos($value, 'digicontent_openai_key') !== false && !preg_match('/^sk-[a-zA-Z0-9]{48}$/', $value)) {
+        if ($option_name === 'sanitize_option_digicontent_openai_key' && !preg_match('/^sk-[a-zA-Z0-9]{48}$/', $value)) {
             add_settings_error(
                 'digicontent_api_settings',
                 'invalid_key_format',
